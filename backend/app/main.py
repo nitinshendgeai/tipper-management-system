@@ -53,6 +53,7 @@ app.add_middleware(
 @app.on_event("startup")
 def startup():
     Base.metadata.create_all(bind=engine)
+    seed_data()
 
 
 # ─── Authentication ───────────────────────────────────────────────────────────
