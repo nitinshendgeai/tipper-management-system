@@ -3,7 +3,16 @@ import os
 
 load_dotenv()
 
+import os
+
 DATABASE_URL = os.getenv("DATABASE_URL")
+
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace(
+        "postgres://",
+        "postgresql://",
+        1
+    )
 
 SECRET_KEY = "tipper-secret-key"
 
