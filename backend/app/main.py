@@ -1,8 +1,9 @@
+```python
 from fastapi import FastAPI
-
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.seed import seed_data
+from app.db.session import Base, engine
 
 from app.api.auth_api import router as auth_router
 from app.api.admin_api import router as admin_router
@@ -18,7 +19,6 @@ from app.api.trip_api import router as trip_router
 from app.api.trip_expense_api import router as trip_expense_router
 
 from app.api.dashboard_api import router as dashboard_router
-from app.db.session import Base, engine
 
 
 app = FastAPI(
@@ -37,24 +37,47 @@ app.add_middleware(
 )
 
 
-from app.db.session import engine
-from app.db.base import Base
-
 @app.on_event("startup")
 def startup():
     Base.metadata.create_all(bind=engine)
     seed_data()
 
+
 # ─── Authentication ───────────────────────────────────────────────────────────
 
-app.include_router(auth_router,  prefix="/auth",  tags=["Authentication"])
-app.include_router(admin_router, prefix="/admin", tags=["Admin"])
+app.include_router(
+    auth_router,
+    prefix="/auth",
+    tags=["Authentication"]
+)
+
+app.include_router(
+    admin_router,
+    prefix="/admin",
+    tags=["Admin"]
+)
+
 
 # ─── Master Data ──────────────────────────────────────────────────────────────
 
-app.include_router(vehicle_router, prefix="/vehicles", tags=["Vehicle Master"])
-app.include_router(driver_router,  prefix="/drivers",  tags=["Driver Master"])
-app.include_router(route_router,   prefix="/routes",   tags=["Route Master"])
+app.include_router(
+    vehicle_router,
+    prefix="/vehicles",
+    tags=["Vehicle Master"]
+)
+
+app.include_router(
+    driver_router,
+    prefix="/drivers",
+    tags=["Driver Master"]
+)
+
+app.include_router(
+    route_router,
+    prefix="/routes",
+    tags=["Route Master"]
+)
+
 
 # ─── Operational Workflow ─────────────────────────────────────────────────────
 
@@ -70,9 +93,24 @@ app.include_router(
     tags=["AI Route Intelligence"]
 )
 
-app.include_router(trip_router,         prefix="/trips",         tags=["Trip Operations"])
-app.include_router(trip_expense_router, prefix="/trips",         tags=["Trip Expenses"])
+app.include_router(
+    trip_router,
+    prefix="/trips",
+    tags=["Trip Operations"]
+)
+
+app.include_router(
+    trip_expense_router,
+    prefix="/trips",
+    tags=["Trip Expenses"]
+)
+
 
 # ─── Dashboard ────────────────────────────────────────────────────────────────
 
-app.include_router(dashboard_router, prefix="/dashboard", tags=["Dashboard Analytics"])
+app.include_router(
+    dashboard_router,
+    prefix="/dashboard",
+    tags=["Dashboard Analytics"]
+)
+
