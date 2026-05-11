@@ -1,5 +1,4 @@
 class AssignmentModel {
-
   final int id;
 
   final int vehicleId;
@@ -67,10 +66,8 @@ class AssignmentModel {
   }
 }
 
-
 /// Lightweight status check returned by GET /allocations/vehicle/{id}/status
 class VehicleAssignmentStatus {
-
   final int vehicleId;
   final String vehicleNumber;
   final String vehicleStatus;

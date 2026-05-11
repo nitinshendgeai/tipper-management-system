@@ -6,7 +6,6 @@ import '../widgets/assignment_card.dart';
 import 'create_assignment_screen.dart';
 
 class AllocationScreen extends StatefulWidget {
-
   const AllocationScreen({super.key});
 
   @override
@@ -15,7 +14,6 @@ class AllocationScreen extends StatefulWidget {
 
 class _AllocationScreenState extends State<AllocationScreen>
     with SingleTickerProviderStateMixin {
-
   final AllocationService _service = AllocationService();
 
   late TabController _tabController;
@@ -38,7 +36,7 @@ class _AllocationScreenState extends State<AllocationScreen>
   void _loadAll() {
     setState(() {
       _activeFuture = _service.getActiveAssignments();
-      _allFuture    = _service.getAllAssignments();
+      _allFuture = _service.getAllAssignments();
     });
   }
 
@@ -67,11 +65,19 @@ class _AllocationScreenState extends State<AllocationScreen>
           'Their shift attendance will be marked complete.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('CANCEL')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('CANCEL'),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
             child: const Text('END SHIFT'),
           ),
         ],
@@ -87,7 +93,9 @@ class _AllocationScreenState extends State<AllocationScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${assignment.driverName} released from ${assignment.vehicleNumber}'),
+            content: Text(
+              '${assignment.driverName} released from ${assignment.vehicleNumber}',
+            ),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
@@ -99,9 +107,11 @@ class _AllocationScreenState extends State<AllocationScreen>
         final msg = e.toString();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(msg.contains('ON_TRIP')
-                ? 'Cannot release — vehicle is currently ON_TRIP'
-                : 'Failed to release assignment'),
+            content: Text(
+              msg.contains('ON_TRIP')
+                  ? 'Cannot release — vehicle is currently ON_TRIP'
+                  : 'Failed to release assignment',
+            ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -116,7 +126,11 @@ class _AllocationScreenState extends State<AllocationScreen>
       appBar: AppBar(
         title: const Text('Shift Allocation'),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), tooltip: 'Refresh', onPressed: _loadAll),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh',
+            onPressed: _loadAll,
+          ),
         ],
         bottom: TabBar(
           controller: _tabController,
@@ -136,8 +150,16 @@ class _AllocationScreenState extends State<AllocationScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildList(future: _activeFuture, showRelease: true, empty: 'No active shifts.\nTap "Assign Driver" to start.'),
-          _buildList(future: _allFuture, showRelease: false, empty: 'No assignment history.'),
+          _buildList(
+            future: _activeFuture,
+            showRelease: true,
+            empty: 'No active shifts.\nTap "Assign Driver" to start.',
+          ),
+          _buildList(
+            future: _allFuture,
+            showRelease: false,
+            empty: 'No assignment history.',
+          ),
         ],
       ),
     );
@@ -151,7 +173,6 @@ class _AllocationScreenState extends State<AllocationScreen>
     return FutureBuilder<List<AssignmentModel>>(
       future: future,
       builder: (ctx, snapshot) {
-
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -161,11 +182,19 @@ class _AllocationScreenState extends State<AllocationScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.cloud_off_rounded, size: 64, color: Colors.grey[400]),
+                Icon(
+                  Icons.cloud_off_rounded,
+                  size: 64,
+                  color: Colors.grey[400],
+                ),
                 const SizedBox(height: 12),
                 const Text('Failed to load assignments'),
                 const SizedBox(height: 16),
-                ElevatedButton.icon(onPressed: _loadAll, icon: const Icon(Icons.refresh), label: const Text('Retry')),
+                ElevatedButton.icon(
+                  onPressed: _loadAll,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Retry'),
+                ),
               ],
             ),
           );
@@ -178,9 +207,17 @@ class _AllocationScreenState extends State<AllocationScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.swap_horiz_rounded, size: 80, color: Colors.grey[350]),
+                Icon(
+                  Icons.swap_horiz_rounded,
+                  size: 80,
+                  color: Colors.grey[350],
+                ),
                 const SizedBox(height: 16),
-                Text(empty, textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+                Text(
+                  empty,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                ),
               ],
             ),
           );

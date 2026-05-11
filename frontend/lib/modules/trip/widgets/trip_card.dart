@@ -4,7 +4,6 @@ import '../models/trip_model.dart';
 import 'trip_status_badge.dart';
 
 class TripCard extends StatelessWidget {
-
   final TripModel trip;
   final VoidCallback? onTap;
   final VoidCallback? onStart;
@@ -18,16 +17,28 @@ class TripCard extends StatelessWidget {
     this.onComplete,
   });
 
-  Widget _infoRow(IconData icon, String label, String value, {Color? iconColor}) {
+  Widget _infoRow(
+    IconData icon,
+    String label,
+    String value, {
+    Color? iconColor,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
           Icon(icon, size: 13, color: iconColor ?? Colors.grey[600]),
           const SizedBox(width: 5),
-          Text('$label: ', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          Text(
+            '$label: ',
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
           Expanded(
-            child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
@@ -48,11 +59,16 @@ class TripCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               // ── Header ──────────────────────────────────────────────────────
               Row(
                 children: [
-                  Text('Trip #${trip.id}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                  Text(
+                    'Trip #${trip.id}',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const Spacer(),
                   TripStatusBadge(status: trip.tripStatus),
                   const SizedBox(width: 4),
@@ -65,18 +81,28 @@ class TripCard extends StatelessWidget {
               // ── Route ────────────────────────────────────────────────────────
               Row(
                 children: [
-                  const Icon(Icons.location_on_outlined, size: 14, color: Colors.teal),
+                  const Icon(
+                    Icons.location_on_outlined,
+                    size: 14,
+                    color: Colors.teal,
+                  ),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
                       '${trip.sourceLocation ?? ''}  →  ${trip.destinationLocation ?? ''}',
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.teal),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.teal,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   if (trip.calculatedDistanceKm != null)
-                    Text('${trip.calculatedDistanceKm!.toStringAsFixed(0)} km',
-                        style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                    Text(
+                      '${trip.calculatedDistanceKm!.toStringAsFixed(0)} km',
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                    ),
                 ],
               ),
 
@@ -84,30 +110,58 @@ class TripCard extends StatelessWidget {
               const Divider(height: 1),
               const SizedBox(height: 6),
 
-              _infoRow(Icons.fire_truck_outlined, 'Vehicle', trip.vehicleNumber, iconColor: Colors.indigo),
-              _infoRow(Icons.person_outline, 'Driver', trip.driverName, iconColor: Colors.indigo),
+              _infoRow(
+                Icons.fire_truck_outlined,
+                'Vehicle',
+                trip.vehicleNumber,
+                iconColor: Colors.indigo,
+              ),
+              _infoRow(
+                Icons.person_outline,
+                'Driver',
+                trip.driverName,
+                iconColor: Colors.indigo,
+              ),
 
               if (trip.startKm != null)
-                _infoRow(Icons.speed_outlined, 'Start KM', trip.startKm!.toStringAsFixed(0)),
+                _infoRow(
+                  Icons.speed_outlined,
+                  'Start KM',
+                  trip.startKm!.toStringAsFixed(0),
+                ),
 
               if (trip.revenueAmount != null)
-                _infoRow(Icons.currency_rupee, 'Revenue',
-                    '₹${trip.revenueAmount!.toStringAsFixed(0)}', iconColor: Colors.green[700]),
+                _infoRow(
+                  Icons.currency_rupee,
+                  'Revenue',
+                  '₹${trip.revenueAmount!.toStringAsFixed(0)}',
+                  iconColor: Colors.green[700],
+                ),
 
-              if (trip.totalLoggedExpense != null && trip.totalLoggedExpense! > 0)
-                _infoRow(Icons.receipt_outlined, 'Expenses',
-                    '₹${trip.totalLoggedExpense!.toStringAsFixed(0)}', iconColor: Colors.orange),
+              if (trip.totalLoggedExpense != null &&
+                  trip.totalLoggedExpense! > 0)
+                _infoRow(
+                  Icons.receipt_outlined,
+                  'Expenses',
+                  '₹${trip.totalLoggedExpense!.toStringAsFixed(0)}',
+                  iconColor: Colors.orange,
+                ),
 
               if (trip.isCancelled && trip.cancellationReason != null) ...[
                 const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.red.shade50,
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Text('Cancelled: ${trip.cancellationReason}',
-                      style: const TextStyle(fontSize: 11, color: Colors.red)),
+                  child: Text(
+                    'Cancelled: ${trip.cancellationReason}',
+                    style: const TextStyle(fontSize: 11, color: Colors.red),
+                  ),
                 ),
               ],
 
@@ -124,7 +178,9 @@ class TripCard extends StatelessWidget {
                       backgroundColor: Colors.orange,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                 ),
@@ -142,7 +198,9 @@ class TripCard extends StatelessWidget {
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                 ),

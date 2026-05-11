@@ -6,7 +6,6 @@ import '../models/driver_model.dart';
 import '../services/driver_service.dart';
 
 class EditDriverScreen extends StatefulWidget {
-
   final DriverModel driver;
 
   const EditDriverScreen({super.key, required this.driver});
@@ -16,7 +15,6 @@ class EditDriverScreen extends StatefulWidget {
 }
 
 class _EditDriverScreenState extends State<EditDriverScreen> {
-
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final DriverService _driverService = DriverService();
   final VehicleService _vehicleService = VehicleService();
@@ -37,21 +35,19 @@ class _EditDriverScreenState extends State<EditDriverScreen> {
 
   @override
   void initState() {
-
     super.initState();
 
     final d = widget.driver;
 
     _fullNameController = TextEditingController(text: d.fullName);
     _mobileController = TextEditingController(text: d.mobileNumber);
-    _licenseNumberController =
-        TextEditingController(text: d.licenseNumber);
-    _licenseExpiryController =
-        TextEditingController(text: d.licenseExpiry);
+    _licenseNumberController = TextEditingController(text: d.licenseNumber);
+    _licenseExpiryController = TextEditingController(text: d.licenseExpiry);
     _aadhaarController = TextEditingController(text: d.aadhaarNumber);
     _addressController = TextEditingController(text: d.address);
-    _emergencyContactController =
-        TextEditingController(text: d.emergencyContact);
+    _emergencyContactController = TextEditingController(
+      text: d.emergencyContact,
+    );
 
     _selectedVehicleId = d.vehicleId;
 
@@ -73,7 +69,6 @@ class _EditDriverScreenState extends State<EditDriverScreen> {
   // ─── Load vehicle dropdown ────────────────────────────────────────────────
 
   Future<void> _fetchVehicles() async {
-
     setState(() => _isLoadingVehicles = true);
 
     try {
@@ -89,18 +84,15 @@ class _EditDriverScreenState extends State<EditDriverScreen> {
   // ─── Update ───────────────────────────────────────────────────────────────
 
   Future<void> _updateDriver() async {
-
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-
       final payload = <String, dynamic>{
         'full_name': _fullNameController.text.trim(),
         'mobile_number': _mobileController.text.trim(),
-        'license_number':
-            _licenseNumberController.text.trim().toUpperCase(),
+        'license_number': _licenseNumberController.text.trim().toUpperCase(),
         'license_expiry': _licenseExpiryController.text.trim(),
         'aadhaar_number': _aadhaarController.text.trim(),
         'address': _addressController.text.trim(),
@@ -120,9 +112,7 @@ class _EditDriverScreenState extends State<EditDriverScreen> {
         );
         Navigator.pop(context, true); // triggers list refresh
       }
-
     } catch (e) {
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -132,14 +122,12 @@ class _EditDriverScreenState extends State<EditDriverScreen> {
           ),
         );
       }
-
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
   String _parseError(Object e) {
-
     final msg = e.toString();
 
     if (msg.contains('already in use')) {
@@ -150,8 +138,7 @@ class _EditDriverScreenState extends State<EditDriverScreen> {
       return 'Permission denied — admin access required.';
     }
     if (msg.contains('404')) return 'Driver not found.';
-    if (msg.contains('SocketException') ||
-        msg.contains('Connection refused')) {
+    if (msg.contains('SocketException') || msg.contains('Connection refused')) {
       return 'Cannot reach server — check your connection.';
     }
 
@@ -162,27 +149,19 @@ class _EditDriverScreenState extends State<EditDriverScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
-
-      appBar: AppBar(
-        title: Text('Edit ${widget.driver.fullName}'),
-      ),
+      appBar: AppBar(title: Text('Edit ${widget.driver.fullName}')),
 
       body: SingleChildScrollView(
-
         padding: const EdgeInsets.all(20),
 
         child: Form(
-
           key: _formKey,
 
           child: Column(
-
             crossAxisAlignment: CrossAxisAlignment.start,
 
             children: [
-
               // ── Section: Personal Details ────────────────────────────
               _sectionHeader('Personal Details'),
               const SizedBox(height: 16),
@@ -191,10 +170,9 @@ class _EditDriverScreenState extends State<EditDriverScreen> {
                 controller: _fullNameController,
                 label: 'Full Name *',
                 textCapitalization: TextCapitalization.words,
-                validator: (v) =>
-                    v == null || v.trim().isEmpty
-                        ? 'Full name is required'
-                        : null,
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'Full name is required'
+                    : null,
               ),
 
               _buildField(
@@ -232,10 +210,9 @@ class _EditDriverScreenState extends State<EditDriverScreen> {
                 label: 'Address *',
                 maxLines: 2,
                 textCapitalization: TextCapitalization.sentences,
-                validator: (v) =>
-                    v == null || v.trim().isEmpty
-                        ? 'Address is required'
-                        : null,
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'Address is required'
+                    : null,
               ),
 
               _buildField(
@@ -351,7 +328,6 @@ class _EditDriverScreenState extends State<EditDriverScreen> {
   // ─── Vehicle Dropdown ─────────────────────────────────────────────────────
 
   Widget _buildVehicleDropdown() {
-
     if (_isLoadingVehicles) {
       return const Padding(
         padding: EdgeInsets.only(bottom: 16),
@@ -374,12 +350,11 @@ class _EditDriverScreenState extends State<EditDriverScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: DropdownButtonFormField<int?>(
-        value: validSelection,
+        initialValue: validSelection,
         decoration: const InputDecoration(
           labelText: 'Assigned Vehicle (optional)',
           border: OutlineInputBorder(),
-          contentPadding:
-              EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           prefixIcon: Icon(Icons.fire_truck_outlined),
         ),
         items: [
@@ -402,7 +377,6 @@ class _EditDriverScreenState extends State<EditDriverScreen> {
   // ─── Helper Widgets ───────────────────────────────────────────────────────
 
   Widget _sectionHeader(String title) {
-
     return Text(
       title,
       style: const TextStyle(
@@ -423,7 +397,6 @@ class _EditDriverScreenState extends State<EditDriverScreen> {
     int maxLines = 1,
     String? Function(String?)? validator,
   }) {
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
@@ -435,8 +408,10 @@ class _EditDriverScreenState extends State<EditDriverScreen> {
           labelText: label,
           hintText: hint,
           border: const OutlineInputBorder(),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
         ),
         validator: validator,
       ),

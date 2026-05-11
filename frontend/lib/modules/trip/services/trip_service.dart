@@ -5,15 +5,16 @@ import '../../../core/storage/token_storage.dart';
 import '../models/trip_model.dart';
 
 class TripService {
-
   final Dio _dio = Dio();
 
   Future<Options> _authOptions() async {
     final token = await TokenStorage.getToken();
-    return Options(headers: {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    });
+    return Options(
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
   }
 
   // ─── READ ──────────────────────────────────────────────────────────────────
@@ -26,9 +27,9 @@ class TripService {
     int? driverId,
   }) async {
     final params = <String, dynamic>{};
-    if (status    != null) params['status']     = status;
+    if (status != null) params['status'] = status;
     if (vehicleId != null) params['vehicle_id'] = vehicleId;
-    if (driverId  != null) params['driver_id']  = driverId;
+    if (driverId != null) params['driver_id'] = driverId;
 
     final response = await _dio.get(
       '${ApiConstants.baseUrl}/trips/',
@@ -36,7 +37,9 @@ class TripService {
     );
 
     final List data = response.data as List;
-    return data.map((e) => TripModel.fromJson(e as Map<String, dynamic>)).toList();
+    return data
+        .map((e) => TripModel.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// Get a single trip by ID.
@@ -71,7 +74,10 @@ class TripService {
 
   // ─── COMPLETE ──────────────────────────────────────────────────────────────
 
-  Future<TripModel> completeTrip(int tripId, Map<String, dynamic> payload) async {
+  Future<TripModel> completeTrip(
+    int tripId,
+    Map<String, dynamic> payload,
+  ) async {
     final options = await _authOptions();
     final response = await _dio.put(
       '${ApiConstants.baseUrl}/trips/$tripId/complete',

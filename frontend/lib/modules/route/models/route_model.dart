@@ -1,5 +1,4 @@
 class RouteModel {
-
   final int id;
   final String sourceLocation;
   final String destinationLocation;
@@ -27,7 +26,6 @@ class RouteModel {
   });
 
   factory RouteModel.fromJson(Map<String, dynamic> json) {
-
     return RouteModel(
       id: json['id'] as int,
       sourceLocation: json['source_location'] as String? ?? '',
@@ -42,7 +40,6 @@ class RouteModel {
   }
 
   Map<String, dynamic> toJson() {
-
     return {
       'source_location': sourceLocation,
       'destination_location': destinationLocation,

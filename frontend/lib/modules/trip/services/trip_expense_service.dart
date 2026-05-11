@@ -5,15 +5,16 @@ import '../../../core/storage/token_storage.dart';
 import '../models/trip_expense_model.dart';
 
 class TripExpenseService {
-
   final Dio _dio = Dio();
 
   Future<Options> _authOptions() async {
     final token = await TokenStorage.getToken();
-    return Options(headers: {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    });
+    return Options(
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
   }
 
   // ─── Get all expenses for a trip ──────────────────────────────────────────
@@ -27,7 +28,10 @@ class TripExpenseService {
 
   // ─── Add expense ──────────────────────────────────────────────────────────
 
-  Future<TripExpenseModel> addExpense(int tripId, Map<String, dynamic> payload) async {
+  Future<TripExpenseModel> addExpense(
+    int tripId,
+    Map<String, dynamic> payload,
+  ) async {
     final options = await _authOptions();
     final response = await _dio.post(
       '${ApiConstants.baseUrl}/trips/$tripId/expenses',

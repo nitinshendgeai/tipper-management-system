@@ -11,15 +11,12 @@ class TipperERPApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return MaterialApp(
       debugShowCheckedModeBanner: false,
 
       title: 'Tipper ERP',
 
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
+      theme: ThemeData(primarySwatch: Colors.blue),
 
       home: const LoginScreen(),
     );

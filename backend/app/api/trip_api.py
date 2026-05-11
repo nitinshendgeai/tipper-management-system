@@ -327,7 +327,7 @@ def complete_trip(
             detail=f"Trip cannot be completed — current status is '{trip.trip_status}'"
         )
 
-    if trip.start_km and data.end_km <= trip.start_km:
+    if trip.start_km is not None and data.end_km <= trip.start_km:
         raise HTTPException(
             status_code=422,
             detail=f"End KM ({data.end_km}) must be greater than Start KM ({trip.start_km})"

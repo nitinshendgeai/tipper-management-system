@@ -4,7 +4,6 @@ import '../models/trip_expense_model.dart';
 import '../services/trip_expense_service.dart';
 
 class AddExpenseScreen extends StatefulWidget {
-
   final int tripId;
 
   const AddExpenseScreen({super.key, required this.tripId});
@@ -14,7 +13,6 @@ class AddExpenseScreen extends StatefulWidget {
 }
 
 class _AddExpenseScreenState extends State<AddExpenseScreen> {
-
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TripExpenseService _service = TripExpenseService();
 
@@ -56,7 +54,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         );
         Navigator.pop(context, true);
       }
-
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -74,20 +71,29 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   String _parseError(Object e) {
     final msg = e.toString();
-    if (msg.contains('409')) return 'Expenses can only be added to STARTED trips.';
+    if (msg.contains('409')) {
+      return 'Expenses can only be added to STARTED trips.';
+    }
     if (msg.contains('403')) return 'Permission denied.';
     return 'Failed to add expense. Try again.';
   }
 
   IconData _typeIcon(String type) {
     switch (type) {
-      case 'Diesel': return Icons.local_gas_station_outlined;
-      case 'Toll': return Icons.toll_outlined;
-      case 'Food/Bata': return Icons.restaurant_outlined;
-      case 'Repair': return Icons.build_outlined;
-      case 'Puncture': return Icons.tire_repair_outlined;
-      case 'Police': return Icons.local_police_outlined;
-      default: return Icons.receipt_outlined;
+      case 'Diesel':
+        return Icons.local_gas_station_outlined;
+      case 'Toll':
+        return Icons.toll_outlined;
+      case 'Food/Bata':
+        return Icons.restaurant_outlined;
+      case 'Repair':
+        return Icons.build_outlined;
+      case 'Puncture':
+        return Icons.tire_repair_outlined;
+      case 'Police':
+        return Icons.local_police_outlined;
+      default:
+        return Icons.receipt_outlined;
     }
   }
 
@@ -102,11 +108,14 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               // ── Expense Type Grid ──────────────────────────────────────────
               const Text(
                 'Expense Type',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.teal),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.teal,
+                ),
               ),
               const SizedBox(height: 12),
 
@@ -131,23 +140,29 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         color: isSelected ? Colors.teal : Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: isSelected ? Colors.teal : Colors.grey.shade300,
+                          color: isSelected
+                              ? Colors.teal
+                              : Colors.grey.shade300,
                           width: isSelected ? 2 : 1,
                         ),
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(_typeIcon(type),
-                              size: 22,
-                              color: isSelected ? Colors.white : Colors.grey[700]),
+                          Icon(
+                            _typeIcon(type),
+                            size: 22,
+                            color: isSelected ? Colors.white : Colors.grey[700],
+                          ),
                           const SizedBox(height: 4),
                           Text(
                             type,
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: isSelected ? Colors.white : Colors.grey[700],
+                              color: isSelected
+                                  ? Colors.white
+                                  : Colors.grey[700],
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -163,24 +178,37 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               // ── Amount ─────────────────────────────────────────────────────
               const Text(
                 'Amount',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.teal),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.teal,
+                ),
               ),
               const SizedBox(height: 12),
 
               TextFormField(
                 controller: _amountController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: const InputDecoration(
                   labelText: 'Amount (₹) *',
                   hintText: 'e.g. 250',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.currency_rupee),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                 ),
                 validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Amount is required';
+                  if (v == null || v.trim().isEmpty) {
+                    return 'Amount is required';
+                  }
                   final n = double.tryParse(v.trim());
-                  if (n == null || n <= 0) return 'Enter a valid amount greater than 0';
+                  if (n == null || n <= 0) {
+                    return 'Enter a valid amount greater than 0';
+                  }
                   return null;
                 },
               ),
@@ -195,7 +223,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   labelText: 'Remarks (optional)',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.notes_outlined),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                 ),
               ),
 
@@ -209,12 +240,28 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.teal,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     elevation: 2,
                   ),
                   child: _isLoading
-                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                      : const Text('ADD EXPENSE', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : const Text(
+                          'ADD EXPENSE',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
                 ),
               ),
 

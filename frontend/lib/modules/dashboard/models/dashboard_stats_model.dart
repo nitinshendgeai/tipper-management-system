@@ -1,6 +1,5 @@
 /// Maps to GET /dashboard/stats — full operational fleet analytics.
 class DashboardStatsModel {
-
   // Master counts
   final int totalVehicles;
   final int totalDrivers;
@@ -56,38 +55,52 @@ class DashboardStatsModel {
   factory DashboardStatsModel.fromJson(Map<String, dynamic> json) {
     return DashboardStatsModel(
       totalVehicles: json['total_vehicles'] as int? ?? 0,
-      totalDrivers:  json['total_drivers'] as int? ?? 0,
-      totalRoutes:   json['total_routes'] as int? ?? 0,
+      totalDrivers: json['total_drivers'] as int? ?? 0,
+      totalRoutes: json['total_routes'] as int? ?? 0,
 
-      vehiclesAvailable:  json['vehicles_available'] as int? ?? 0,
-      vehiclesAssigned:   json['vehicles_assigned'] as int? ?? 0,
-      vehiclesOnTrip:     json['vehicles_on_trip'] as int? ?? 0,
+      vehiclesAvailable: json['vehicles_available'] as int? ?? 0,
+      vehiclesAssigned: json['vehicles_assigned'] as int? ?? 0,
+      vehiclesOnTrip: json['vehicles_on_trip'] as int? ?? 0,
       vehiclesMaintenance: json['vehicles_maintenance'] as int? ?? 0,
 
       driversAvailable: json['drivers_available'] as int? ?? 0,
-      driversOnTrip:    json['drivers_on_trip'] as int? ?? 0,
-      driversOffDuty:   json['drivers_off_duty'] as int? ?? 0,
+      driversOnTrip: json['drivers_on_trip'] as int? ?? 0,
+      driversOffDuty: json['drivers_off_duty'] as int? ?? 0,
 
-      tripsTotal:     json['trips_total'] as int? ?? 0,
-      tripsCreated:   json['trips_created'] as int? ?? 0,
-      tripsActive:    json['trips_active'] as int? ?? 0,
+      tripsTotal: json['trips_total'] as int? ?? 0,
+      tripsCreated: json['trips_created'] as int? ?? 0,
+      tripsActive: json['trips_active'] as int? ?? 0,
       tripsCompleted: json['trips_completed'] as int? ?? 0,
       tripsCancelled: json['trips_cancelled'] as int? ?? 0,
 
-      totalRevenue:       (json['total_revenue'] as num?)?.toDouble() ?? 0.0,
-      totalDieselUsed:    (json['total_diesel_used'] as num?)?.toDouble() ?? 0.0,
-      totalTripExpenses:  (json['total_trip_expenses'] as num?)?.toDouble() ?? 0.0,
+      totalRevenue: (json['total_revenue'] as num?)?.toDouble() ?? 0.0,
+      totalDieselUsed: (json['total_diesel_used'] as num?)?.toDouble() ?? 0.0,
+      totalTripExpenses:
+          (json['total_trip_expenses'] as num?)?.toDouble() ?? 0.0,
 
       utilisationPct: (json['utilisation_pct'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
   factory DashboardStatsModel.empty() => const DashboardStatsModel(
-    totalVehicles: 0, totalDrivers: 0, totalRoutes: 0,
-    vehiclesAvailable: 0, vehiclesAssigned: 0, vehiclesOnTrip: 0, vehiclesMaintenance: 0,
-    driversAvailable: 0, driversOnTrip: 0, driversOffDuty: 0,
-    tripsTotal: 0, tripsCreated: 0, tripsActive: 0, tripsCompleted: 0, tripsCancelled: 0,
-    totalRevenue: 0.0, totalDieselUsed: 0.0, totalTripExpenses: 0.0,
+    totalVehicles: 0,
+    totalDrivers: 0,
+    totalRoutes: 0,
+    vehiclesAvailable: 0,
+    vehiclesAssigned: 0,
+    vehiclesOnTrip: 0,
+    vehiclesMaintenance: 0,
+    driversAvailable: 0,
+    driversOnTrip: 0,
+    driversOffDuty: 0,
+    tripsTotal: 0,
+    tripsCreated: 0,
+    tripsActive: 0,
+    tripsCompleted: 0,
+    tripsCancelled: 0,
+    totalRevenue: 0.0,
+    totalDieselUsed: 0.0,
+    totalTripExpenses: 0.0,
     utilisationPct: 0.0,
   );
 }

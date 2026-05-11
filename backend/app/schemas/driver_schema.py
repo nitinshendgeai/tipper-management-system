@@ -10,12 +10,12 @@ class DriverCreate(BaseModel):
     mobile_number: str
 
     license_number: str
-    license_expiry: str
+    license_expiry: Optional[str] = None
 
-    aadhaar_number: str
-    address: str
+    aadhaar_number: Optional[str] = None
+    address: Optional[str] = None
 
-    emergency_contact: str
+    emergency_contact: Optional[str] = None
 
 
 class DriverUpdate(BaseModel):
@@ -44,12 +44,12 @@ class DriverResponse(BaseModel):
     mobile_number: str
 
     license_number: str
-    license_expiry: str
+    license_expiry: Optional[str] = None
 
-    aadhaar_number: str
-    address: str
+    aadhaar_number: Optional[str] = None
+    address: Optional[str] = None
 
-    emergency_contact: str
+    emergency_contact: Optional[str] = None
 
     # Operational status: OFF_DUTY | AVAILABLE | ON_TRIP | BREAK
     status: str = 'OFF_DUTY'

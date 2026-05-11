@@ -1,5 +1,4 @@
 class TripModel {
-
   final int id;
   final String tripStatus;
 
@@ -87,11 +86,11 @@ class TripModel {
 
   // ─── Status helpers ──────────────────────────────────────────────────────
 
-  bool get isCreated   => tripStatus == 'CREATED';
-  bool get isStarted   => tripStatus == 'STARTED';
+  bool get isCreated => tripStatus == 'CREATED';
+  bool get isStarted => tripStatus == 'STARTED';
   bool get isCompleted => tripStatus == 'COMPLETED';
   bool get isCancelled => tripStatus == 'CANCELLED';
-  bool get isActive    => isCreated || isStarted;
+  bool get isActive => isCreated || isStarted;
 
   // ─── fromJson ────────────────────────────────────────────────────────────
 
@@ -100,44 +99,45 @@ class TripModel {
       id: json['id'] as int,
       tripStatus: (json['trip_status'] as String? ?? 'CREATED').toUpperCase(),
 
-      vehicleId:     json['vehicle_id'] as int? ?? 0,
+      vehicleId: json['vehicle_id'] as int? ?? 0,
       vehicleNumber: json['vehicle_number'] as String? ?? '',
       vehicleStatus: json['vehicle_status'] as String? ?? 'UNKNOWN',
 
-      driverId:     json['driver_id'] as int? ?? 0,
-      driverName:   json['driver_name'] as String? ?? '',
+      driverId: json['driver_id'] as int? ?? 0,
+      driverName: json['driver_name'] as String? ?? '',
       driverMobile: json['driver_mobile'] as String? ?? '',
       driverStatus: json['driver_status'] as String? ?? 'UNKNOWN',
 
-      routeId:             json['route_id'] as int?,
-      routeLabel:          json['route_label'] as String?,
-      sourceLocation:      json['source_location'] as String?,
+      routeId: json['route_id'] as int?,
+      routeLabel: json['route_label'] as String?,
+      sourceLocation: json['source_location'] as String?,
       destinationLocation: json['destination_location'] as String?,
 
-      calculatedDistanceKm: (json['calculated_distance_km'] as num?)?.toDouble(),
+      calculatedDistanceKm: (json['calculated_distance_km'] as num?)
+          ?.toDouble(),
       estimatedDurationMin: json['estimated_duration_min'] as int?,
-      estimatedDiesel:      (json['estimated_diesel'] as num?)?.toDouble(),
-      distanceKmOverride:   (json['distance_km_override'] as num?)?.toDouble(),
+      estimatedDiesel: (json['estimated_diesel'] as num?)?.toDouble(),
+      distanceKmOverride: (json['distance_km_override'] as num?)?.toDouble(),
 
-      tripDate:   _parseDate(json['trip_date']),
-      startTime:  _parseDate(json['start_time']),
-      endTime:    _parseDate(json['end_time']),
+      tripDate: _parseDate(json['trip_date']),
+      startTime: _parseDate(json['start_time']),
+      endTime: _parseDate(json['end_time']),
       cancelledAt: _parseDate(json['cancelled_at']),
       cancellationReason: json['cancellation_reason'] as String?,
 
-      startKm:  (json['start_km'] as num?)?.toDouble(),
-      endKm:    (json['end_km'] as num?)?.toDouble(),
+      startKm: (json['start_km'] as num?)?.toDouble(),
+      endKm: (json['end_km'] as num?)?.toDouble(),
 
-      dieselIssued:      (json['diesel_issued'] as num?)?.toDouble(),
-      dieselUsed:        (json['diesel_used'] as num?)?.toDouble(),
-      tripAdvance:       (json['trip_advance'] as num?)?.toDouble(),
-      tripExpense:       (json['trip_expense'] as num?)?.toDouble(),
-      tollExpense:       (json['toll_expense'] as num?)?.toDouble(),
-      driverBata:        (json['driver_bata'] as num?)?.toDouble(),
-      revenueAmount:     (json['revenue_amount'] as num?)?.toDouble(),
+      dieselIssued: (json['diesel_issued'] as num?)?.toDouble(),
+      dieselUsed: (json['diesel_used'] as num?)?.toDouble(),
+      tripAdvance: (json['trip_advance'] as num?)?.toDouble(),
+      tripExpense: (json['trip_expense'] as num?)?.toDouble(),
+      tollExpense: (json['toll_expense'] as num?)?.toDouble(),
+      driverBata: (json['driver_bata'] as num?)?.toDouble(),
+      revenueAmount: (json['revenue_amount'] as num?)?.toDouble(),
       totalLoggedExpense: (json['total_logged_expense'] as num?)?.toDouble(),
 
-      remarks:   json['remarks'] as String?,
+      remarks: json['remarks'] as String?,
       createdAt: _parseDate(json['created_at']),
     );
   }

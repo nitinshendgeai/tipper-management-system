@@ -15,11 +15,13 @@ if DATABASE_URL.startswith("postgres://"):
         1
     )
 
-SECRET_KEY = "tipper-secret-key"
+SECRET_KEY = os.getenv("SECRET_KEY", "tipper-secret-key")
 
 ALGORITHM = "HS256"
 
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+ACCESS_TOKEN_EXPIRE_MINUTES = int(
+    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60")
+)
 
 # ─── Google Maps ──────────────────────────────────────────────────────────────
 # Set GOOGLE_MAPS_API_KEY in your .env file.

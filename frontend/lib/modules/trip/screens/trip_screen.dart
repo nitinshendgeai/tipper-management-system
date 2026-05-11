@@ -8,7 +8,6 @@ import 'complete_trip_screen.dart';
 import 'trip_detail_screen.dart';
 
 class TripScreen extends StatefulWidget {
-
   const TripScreen({super.key});
 
   @override
@@ -17,7 +16,6 @@ class TripScreen extends StatefulWidget {
 
 class _TripScreenState extends State<TripScreen>
     with SingleTickerProviderStateMixin {
-
   final TripService _tripService = TripService();
 
   late TabController _tabController;
@@ -45,13 +43,18 @@ class _TripScreenState extends State<TripScreen>
       _allFuture = _tripService.getTrips();
 
       // Active = CREATED + STARTED
-      _activeFuture = Future.wait([
-        _tripService.getTrips(status: 'CREATED'),
-        _tripService.getTrips(status: 'STARTED'),
-      ]).then((results) => [
-        ...results[0],
-        ...results[1],
-      ]..sort((a, b) => (b.createdAt ?? DateTime(0)).compareTo(a.createdAt ?? DateTime(0))));
+      _activeFuture =
+          Future.wait([
+            _tripService.getTrips(status: 'CREATED'),
+            _tripService.getTrips(status: 'STARTED'),
+          ]).then(
+            (results) => [...results[0], ...results[1]]
+              ..sort(
+                (a, b) => (b.createdAt ?? DateTime(0)).compareTo(
+                  a.createdAt ?? DateTime(0),
+                ),
+              ),
+          );
 
       _completedFuture = _tripService.getTrips(status: 'COMPLETED');
       _cancelledFuture = _tripService.getTrips(status: 'CANCELLED');
@@ -62,7 +65,8 @@ class _TripScreenState extends State<TripScreen>
 
   Future<void> _openCreate() async {
     final bool? result = await Navigator.push<bool>(
-      context, MaterialPageRoute(builder: (_) => const CreateTripScreen()),
+      context,
+      MaterialPageRoute(builder: (_) => const CreateTripScreen()),
     );
     if (result == true) _loadAll();
   }
@@ -86,23 +90,29 @@ class _TripScreenState extends State<TripScreen>
   // ─── Start trip dialog ────────────────────────────────────────────────────
 
   Future<void> _confirmStart(TripModel trip) async {
-    final kmController = TextEditingController(text: trip.startKm?.toStringAsFixed(0) ?? '');
+    final kmController = TextEditingController(
+      text: trip.startKm?.toStringAsFixed(0) ?? '',
+    );
 
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Row(children: [
-          Icon(Icons.play_arrow_rounded, color: Colors.orange),
-          SizedBox(width: 8),
-          Text('Start Trip'),
-        ]),
+        title: const Row(
+          children: [
+            Icon(Icons.play_arrow_rounded, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Start Trip'),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${trip.vehicleNumber}  •  ${trip.sourceLocation ?? ''}',
-                style: const TextStyle(fontSize: 13)),
+            Text(
+              '${trip.vehicleNumber}  •  ${trip.sourceLocation ?? ''}',
+              style: const TextStyle(fontSize: 13),
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: kmController,
@@ -117,11 +127,19 @@ class _TripScreenState extends State<TripScreen>
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('CANCEL')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('CANCEL'),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
             child: const Text('START'),
           ),
         ],
@@ -132,9 +150,15 @@ class _TripScreenState extends State<TripScreen>
 
     final km = double.tryParse(kmController.text.trim());
     if (km == null || km <= 0) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid Start KM'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Enter a valid Start KM'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
       return;
     }
 
@@ -142,14 +166,24 @@ class _TripScreenState extends State<TripScreen>
       await _tripService.startTrip(trip.id, km);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Trip #${trip.id} started!'), backgroundColor: Colors.green, behavior: SnackBarBehavior.floating),
+          SnackBar(
+            content: Text('Trip #${trip.id} started!'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
         _loadAll();
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to start: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to start: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -158,7 +192,9 @@ class _TripScreenState extends State<TripScreen>
     if (msg.contains('401')) return 'Unauthorized — please login again.';
     if (msg.contains('403')) return 'Permission denied.';
     if (msg.contains('409')) return 'Conflict — check trip status.';
-    if (msg.contains('SocketException') || msg.contains('Connection refused')) return 'Cannot reach server.';
+    if (msg.contains('SocketException') || msg.contains('Connection refused')) {
+      return 'Cannot reach server.';
+    }
     return fallback;
   }
 
@@ -168,7 +204,11 @@ class _TripScreenState extends State<TripScreen>
       appBar: AppBar(
         title: const Text('Trips'),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), tooltip: 'Refresh', onPressed: _loadAll),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh',
+            onPressed: _loadAll,
+          ),
         ],
         bottom: TabBar(
           controller: _tabController,
@@ -191,10 +231,26 @@ class _TripScreenState extends State<TripScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildList(future: _allFuture, showActions: true, empty: 'No trips yet.\nTap "New Trip" to start.'),
-          _buildList(future: _activeFuture, showActions: true, empty: 'No active trips.'),
-          _buildList(future: _completedFuture, showActions: false, empty: 'No completed trips yet.'),
-          _buildList(future: _cancelledFuture, showActions: false, empty: 'No cancelled trips.'),
+          _buildList(
+            future: _allFuture,
+            showActions: true,
+            empty: 'No trips yet.\nTap "New Trip" to start.',
+          ),
+          _buildList(
+            future: _activeFuture,
+            showActions: true,
+            empty: 'No active trips.',
+          ),
+          _buildList(
+            future: _completedFuture,
+            showActions: false,
+            empty: 'No completed trips yet.',
+          ),
+          _buildList(
+            future: _cancelledFuture,
+            showActions: false,
+            empty: 'No cancelled trips.',
+          ),
         ],
       ),
     );
@@ -208,7 +264,6 @@ class _TripScreenState extends State<TripScreen>
     return FutureBuilder<List<TripModel>>(
       future: future,
       builder: (ctx, snapshot) {
-
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -220,14 +275,28 @@ class _TripScreenState extends State<TripScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.cloud_off_rounded, size: 64, color: Colors.grey[400]),
+                  Icon(
+                    Icons.cloud_off_rounded,
+                    size: 64,
+                    color: Colors.grey[400],
+                  ),
                   const SizedBox(height: 12),
-                  const Text('Failed to load trips', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  const Text(
+                    'Failed to load trips',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 8),
-                  Text(_parseError(snapshot.error!, 'Unknown error'),
-                      textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[600])),
+                  Text(
+                    _parseError(snapshot.error!, 'Unknown error'),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
                   const SizedBox(height: 20),
-                  ElevatedButton.icon(onPressed: _loadAll, icon: const Icon(Icons.refresh), label: const Text('Retry')),
+                  ElevatedButton.icon(
+                    onPressed: _loadAll,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Retry'),
+                  ),
                 ],
               ),
             ),
@@ -241,10 +310,17 @@ class _TripScreenState extends State<TripScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.local_shipping_outlined, size: 80, color: Colors.grey[350]),
+                Icon(
+                  Icons.local_shipping_outlined,
+                  size: 80,
+                  color: Colors.grey[350],
+                ),
                 const SizedBox(height: 16),
-                Text(empty, textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+                Text(
+                  empty,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                ),
               ],
             ),
           );
@@ -260,8 +336,12 @@ class _TripScreenState extends State<TripScreen>
               return TripCard(
                 trip: trip,
                 onTap: () => _openDetail(trip),
-                onStart: showActions && trip.isCreated ? () => _confirmStart(trip) : null,
-                onComplete: showActions && trip.isStarted ? () => _openComplete(trip) : null,
+                onStart: showActions && trip.isCreated
+                    ? () => _confirmStart(trip)
+                    : null,
+                onComplete: showActions && trip.isStarted
+                    ? () => _openComplete(trip)
+                    : null,
               );
             },
           ),

@@ -29,39 +29,41 @@ router = APIRouter()
 def login(data: LoginRequest):
 
     db = SessionLocal()
+    try:
+        user = db.query(User).filter(
+            User.email == data.email
+        ).first()
 
-    user = db.query(User).filter(
-        User.email == data.email
-    ).first()
+        if not user:
 
-    if not user:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid email or password"
+            )
 
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid email or password"
+        if not verify_password(
+            data.password,
+            user.password_hash
+        ):
+
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid email or password"
+            )
+
+        access_token = create_access_token(
+            data={
+                "sub": user.email,
+                "role_id": user.role_id
+            }
         )
 
-    if not verify_password(
-        data.password,
-        user.password_hash
-    ):
-
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid email or password"
-        )
-
-    access_token = create_access_token(
-        data={
-            "sub": user.email,
-            "role_id": user.role_id
+        return {
+            "access_token": access_token,
+            "token_type": "bearer"
         }
-    )
-
-    return {
-        "access_token": access_token,
-        "token_type": "bearer"
-    }
+    finally:
+        db.close()
 
 
 @router.get("/me")

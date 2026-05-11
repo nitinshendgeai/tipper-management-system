@@ -4,7 +4,6 @@ import '../models/trip_model.dart';
 import '../services/trip_service.dart';
 
 class CompleteTripScreen extends StatefulWidget {
-
   final TripModel trip;
 
   const CompleteTripScreen({super.key, required this.trip});
@@ -14,7 +13,6 @@ class CompleteTripScreen extends StatefulWidget {
 }
 
 class _CompleteTripScreenState extends State<CompleteTripScreen> {
-
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TripService _tripService = TripService();
 
@@ -26,7 +24,8 @@ class _CompleteTripScreenState extends State<CompleteTripScreen> {
   final TextEditingController _tripExpenseController = TextEditingController();
   final TextEditingController _tollExpenseController = TextEditingController();
   final TextEditingController _driverBataController = TextEditingController();
-  final TextEditingController _revenueAmountController = TextEditingController();
+  final TextEditingController _revenueAmountController =
+      TextEditingController();
   final TextEditingController _remarksController = TextEditingController();
 
   @override
@@ -53,13 +52,11 @@ class _CompleteTripScreenState extends State<CompleteTripScreen> {
   // ─── Complete ──────────────────────────────────────────────────────────────
 
   Future<void> _completeTrip() async {
-
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-
       final payload = <String, dynamic>{
         'end_km': double.parse(_endKmController.text.trim()),
         'diesel_used': double.parse(_dieselUsedController.text.trim()),
@@ -90,7 +87,6 @@ class _CompleteTripScreenState extends State<CompleteTripScreen> {
         );
         Navigator.pop(context, true);
       }
-
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -107,15 +103,18 @@ class _CompleteTripScreenState extends State<CompleteTripScreen> {
   }
 
   String _parseError(Object e) {
-
     final msg = e.toString();
 
     if (msg.contains('401')) return 'Session expired — please login again.';
-    if (msg.contains('403')) return 'Permission denied — admin access required.';
+    if (msg.contains('403')) {
+      return 'Permission denied — admin access required.';
+    }
     if (msg.contains('End KM') || msg.contains('end_km')) {
       return 'End KM must be greater than Start KM.';
     }
-    if (msg.contains('409')) return 'Trip cannot be completed in its current status.';
+    if (msg.contains('409')) {
+      return 'Trip cannot be completed in its current status.';
+    }
     if (msg.contains('SocketException') || msg.contains('Connection refused')) {
       return 'Cannot reach server — check your connection.';
     }
@@ -127,11 +126,9 @@ class _CompleteTripScreenState extends State<CompleteTripScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     final trip = widget.trip;
 
     return Scaffold(
-
       appBar: AppBar(
         title: Text(
           'Complete Trip #${trip.id}',
@@ -146,7 +143,6 @@ class _CompleteTripScreenState extends State<CompleteTripScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               // ── Trip summary card ─────────────────────────────────────────
               _buildSummaryCard(trip),
 
@@ -165,7 +161,9 @@ class _CompleteTripScreenState extends State<CompleteTripScreen> {
                 keyboardType: TextInputType.number,
                 prefixIcon: Icons.flag_outlined,
                 validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'End KM is required';
+                  if (v == null || v.trim().isEmpty) {
+                    return 'End KM is required';
+                  }
                   final n = double.tryParse(v.trim());
                   if (n == null) return 'Enter a valid number';
                   if (n <= 0) return 'KM must be greater than 0';
@@ -186,10 +184,14 @@ class _CompleteTripScreenState extends State<CompleteTripScreen> {
                 controller: _dieselUsedController,
                 label: 'Diesel Used (litres) *',
                 hint: 'e.g. 65',
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 prefixIcon: Icons.local_gas_station_outlined,
                 validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Diesel used is required';
+                  if (v == null || v.trim().isEmpty) {
+                    return 'Diesel used is required';
+                  }
                   final n = double.tryParse(v.trim());
                   if (n == null) return 'Enter a valid number';
                   if (n < 0) return 'Cannot be negative';
@@ -207,10 +209,14 @@ class _CompleteTripScreenState extends State<CompleteTripScreen> {
                 controller: _tripExpenseController,
                 label: 'Trip Expense (₹) *',
                 hint: 'e.g. 1200',
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 prefixIcon: Icons.receipt_outlined,
                 validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Trip expense is required';
+                  if (v == null || v.trim().isEmpty) {
+                    return 'Trip expense is required';
+                  }
                   final n = double.tryParse(v.trim());
                   if (n == null) return 'Enter a valid amount';
                   if (n < 0) return 'Cannot be negative';
@@ -222,7 +228,9 @@ class _CompleteTripScreenState extends State<CompleteTripScreen> {
                 controller: _tollExpenseController,
                 label: 'Toll Expense (₹, optional)',
                 hint: 'e.g. 150',
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 prefixIcon: Icons.toll_outlined,
                 validator: (v) {
                   if (v != null && v.trim().isNotEmpty) {
@@ -238,7 +246,9 @@ class _CompleteTripScreenState extends State<CompleteTripScreen> {
                 controller: _driverBataController,
                 label: 'Driver Bata (₹, optional)',
                 hint: 'e.g. 300',
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 prefixIcon: Icons.person_outlined,
                 validator: (v) {
                   if (v != null && v.trim().isNotEmpty) {
@@ -260,7 +270,9 @@ class _CompleteTripScreenState extends State<CompleteTripScreen> {
                 controller: _revenueAmountController,
                 label: 'Revenue Amount (₹, optional)',
                 hint: 'e.g. 8500',
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 prefixIcon: Icons.currency_rupee,
                 validator: (v) {
                   if (v != null && v.trim().isNotEmpty) {
@@ -404,8 +416,10 @@ class _CompleteTripScreenState extends State<CompleteTripScreen> {
           labelText: label,
           hintText: hint,
           border: const OutlineInputBorder(),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
           prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
         ),
         validator: validator,

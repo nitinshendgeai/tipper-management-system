@@ -10,7 +10,6 @@ import 'add_expense_screen.dart';
 import 'complete_trip_screen.dart';
 
 class TripDetailScreen extends StatefulWidget {
-
   final int tripId;
 
   const TripDetailScreen({super.key, required this.tripId});
@@ -20,7 +19,6 @@ class TripDetailScreen extends StatefulWidget {
 }
 
 class _TripDetailScreenState extends State<TripDetailScreen> {
-
   final TripService _tripService = TripService();
   final TripExpenseService _expenseService = TripExpenseService();
 
@@ -35,7 +33,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
 
   void _load() {
     setState(() {
-      _tripFuture    = _tripService.getTrip(widget.tripId);
+      _tripFuture = _tripService.getTrip(widget.tripId);
       _expenseFuture = _expenseService.getExpenses(widget.tripId);
     });
   }
@@ -51,17 +49,21 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Row(children: [
-          Icon(Icons.play_arrow_rounded, color: Colors.orange),
-          SizedBox(width: 8),
-          Text('Start Trip'),
-        ]),
+        title: const Row(
+          children: [
+            Icon(Icons.play_arrow_rounded, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Start Trip'),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${trip.vehicleNumber}  •  ${trip.sourceLocation} → ${trip.destinationLocation}',
-                style: const TextStyle(fontSize: 13)),
+            Text(
+              '${trip.vehicleNumber}  •  ${trip.sourceLocation} → ${trip.destinationLocation}',
+              style: const TextStyle(fontSize: 13),
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: kmController,
@@ -76,11 +78,19 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('CANCEL')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('CANCEL'),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
             child: const Text('START'),
           ),
         ],
@@ -91,9 +101,15 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
 
     final km = double.tryParse(kmController.text.trim());
     if (km == null || km <= 0) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid Start KM'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Enter a valid Start KM'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
       return;
     }
 
@@ -101,15 +117,25 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
       await _tripService.startTrip(trip.id, km);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Trip started!'), backgroundColor: Colors.green, behavior: SnackBarBehavior.floating),
+          const SnackBar(
+            content: Text('Trip started!'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
         _load();
         Navigator.pop(context, true); // refresh parent list
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to start trip: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to start trip: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -120,7 +146,9 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
       context,
       MaterialPageRoute(builder: (_) => AddExpenseScreen(tripId: trip.id)),
     );
-    if (result == true) _load();
+    if (result == true) {
+      _load();
+    }
   }
 
   // ─── Complete trip ────────────────────────────────────────────────────────
@@ -141,11 +169,19 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
   Future<void> _deleteExpense(TripModel trip, TripExpenseModel expense) async {
     try {
       await _expenseService.deleteExpense(trip.id, expense.id);
-      if (mounted) _load();
+      if (mounted) {
+        _load();
+      }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to delete expense'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to delete expense'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -154,7 +190,6 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
     return FutureBuilder<TripModel>(
       future: _tripFuture,
       builder: (ctx, tripSnap) {
-
         final trip = tripSnap.data;
 
         return Scaffold(
@@ -171,8 +206,8 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
           body: tripSnap.connectionState == ConnectionState.waiting
               ? const Center(child: CircularProgressIndicator())
               : tripSnap.hasError
-                  ? Center(child: Text('Error: ${tripSnap.error}'))
-                  : _buildBody(trip!),
+              ? Center(child: Text('Error: ${tripSnap.error}'))
+              : _buildBody(trip!),
         );
       },
     );
@@ -249,7 +284,11 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
               Expanded(
                 child: Text(
                   '${trip.sourceLocation}  →  ${trip.destinationLocation}',
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.teal),
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.teal,
+                  ),
                 ),
               ),
               TripStatusBadge(status: trip.tripStatus),
@@ -258,13 +297,27 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
           const SizedBox(height: 8),
           Row(
             children: [
-              Icon(Icons.fire_truck_outlined, size: 14, color: Colors.grey[600]),
+              Icon(
+                Icons.fire_truck_outlined,
+                size: 14,
+                color: Colors.grey[600],
+              ),
               const SizedBox(width: 4),
-              Text(trip.vehicleNumber, style: TextStyle(fontSize: 13, color: Colors.grey[700], fontWeight: FontWeight.w600)),
+              Text(
+                trip.vehicleNumber,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey[700],
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(width: 16),
               Icon(Icons.person_outline, size: 14, color: Colors.grey[600]),
               const SizedBox(width: 4),
-              Text(trip.driverName, style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+              Text(
+                trip.driverName,
+                style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+              ),
             ],
           ),
           if (trip.tripDate != null) ...[
@@ -290,23 +343,43 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _cardTitle('AI Route Intelligence', Icons.auto_awesome, Colors.deepPurple),
+            _cardTitle(
+              'AI Route Intelligence',
+              Icons.auto_awesome,
+              Colors.deepPurple,
+            ),
             const SizedBox(height: 12),
             Row(
               children: [
-                _statBox('Distance', trip.calculatedDistanceKm != null
-                    ? '${trip.calculatedDistanceKm!.toStringAsFixed(1)} km' : '—'),
-                _statBox('Duration', trip.estimatedDurationMin != null
-                    ? '${trip.estimatedDurationMin} min' : '—'),
-                _statBox('Est. Diesel', trip.estimatedDiesel != null
-                    ? '${trip.estimatedDiesel!.toStringAsFixed(1)} L' : '—'),
+                _statBox(
+                  'Distance',
+                  trip.calculatedDistanceKm != null
+                      ? '${trip.calculatedDistanceKm!.toStringAsFixed(1)} km'
+                      : '—',
+                ),
+                _statBox(
+                  'Duration',
+                  trip.estimatedDurationMin != null
+                      ? '${trip.estimatedDurationMin} min'
+                      : '—',
+                ),
+                _statBox(
+                  'Est. Diesel',
+                  trip.estimatedDiesel != null
+                      ? '${trip.estimatedDiesel!.toStringAsFixed(1)} L'
+                      : '—',
+                ),
               ],
             ),
             if (trip.distanceKmOverride != null) ...[
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(Icons.edit_outlined, size: 13, color: Colors.orange[700]),
+                  Icon(
+                    Icons.edit_outlined,
+                    size: 13,
+                    color: Colors.orange[700],
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     'Distance override: ${trip.distanceKmOverride!.toStringAsFixed(1)} km',
@@ -335,14 +408,29 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
             _cardTitle('Operational', Icons.settings_outlined, Colors.blueGrey),
             const SizedBox(height: 12),
             if (trip.startKm != null)
-              _infoRow(Icons.speed_outlined, 'Start KM', '${trip.startKm!.toStringAsFixed(0)} km'),
+              _infoRow(
+                Icons.speed_outlined,
+                'Start KM',
+                '${trip.startKm!.toStringAsFixed(0)} km',
+              ),
             if (trip.dieselIssued != null)
-              _infoRow(Icons.local_gas_station_outlined, 'Diesel Issued', '${trip.dieselIssued!.toStringAsFixed(1)} L'),
+              _infoRow(
+                Icons.local_gas_station_outlined,
+                'Diesel Issued',
+                '${trip.dieselIssued!.toStringAsFixed(1)} L',
+              ),
             if (trip.tripAdvance != null)
-              _infoRow(Icons.currency_rupee, 'Trip Advance', '₹${trip.tripAdvance!.toStringAsFixed(0)}'),
+              _infoRow(
+                Icons.currency_rupee,
+                'Trip Advance',
+                '₹${trip.tripAdvance!.toStringAsFixed(0)}',
+              ),
             if (trip.startTime != null)
-              _infoRow(Icons.play_circle_outline, 'Started At',
-                  DateFormat('dd MMM, hh:mm a').format(trip.startTime!.toLocal())),
+              _infoRow(
+                Icons.play_circle_outline,
+                'Started At',
+                DateFormat('dd MMM, hh:mm a').format(trip.startTime!.toLocal()),
+              ),
             if (trip.remarks != null && trip.remarks!.isNotEmpty)
               _infoRow(Icons.notes_outlined, 'Remarks', trip.remarks!),
           ],
@@ -368,7 +456,9 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
 
         return Card(
           margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Column(
@@ -376,11 +466,21 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
               children: [
                 Row(
                   children: [
-                    _cardTitle('Trip Expenses', Icons.receipt_outlined, Colors.orange),
+                    _cardTitle(
+                      'Trip Expenses',
+                      Icons.receipt_outlined,
+                      Colors.orange,
+                    ),
                     const Spacer(),
                     if (summary != null)
-                      Text('Total: ₹${summary.totalAmount.toStringAsFixed(0)}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.orange)),
+                      Text(
+                        'Total: ₹${summary.totalAmount.toStringAsFixed(0)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.orange,
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -389,7 +489,10 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                   const Center(
                     child: Padding(
                       padding: EdgeInsets.all(16),
-                      child: Text('No expenses logged yet.', style: TextStyle(color: Colors.grey)),
+                      child: Text(
+                        'No expenses logged yet.',
+                        style: TextStyle(color: Colors.grey),
+                      ),
                     ),
                   )
                 else ...[
@@ -397,44 +500,78 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 6,
-                    children: summary.byType.entries.map((e) => Chip(
-                      label: Text('${e.key}: ₹${e.value.toStringAsFixed(0)}',
-                          style: const TextStyle(fontSize: 11)),
-                      backgroundColor: Colors.orange.shade50,
-                      side: BorderSide(color: Colors.orange.shade200),
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                    )).toList(),
+                    children: summary.byType.entries
+                        .map(
+                          (e) => Chip(
+                            label: Text(
+                              '${e.key}: ₹${e.value.toStringAsFixed(0)}',
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                            backgroundColor: Colors.orange.shade50,
+                            side: BorderSide(color: Colors.orange.shade200),
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                          ),
+                        )
+                        .toList(),
                   ),
                   const SizedBox(height: 10),
                   // Individual expense rows
-                  ...summary.expenses.map((expense) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.orange.shade50,
-                      radius: 18,
-                      child: Text(expense.expenseType[0],
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.orange)),
-                    ),
-                    title: Text(expense.expenseType, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    subtitle: expense.remarks != null ? Text(expense.remarks!, style: const TextStyle(fontSize: 11)) : null,
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('₹${expense.amount.toStringAsFixed(0)}',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                        if (trip.isStarted) ...[
-                          const SizedBox(width: 4),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                            onPressed: () => _deleteExpense(trip, expense),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
+                  ...summary.expenses.map(
+                    (expense) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.orange.shade50,
+                        radius: 18,
+                        child: Text(
+                          expense.expenseType[0],
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            color: Colors.orange,
                           ),
+                        ),
+                      ),
+                      title: Text(
+                        expense.expenseType,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      subtitle: expense.remarks != null
+                          ? Text(
+                              expense.remarks!,
+                              style: const TextStyle(fontSize: 11),
+                            )
+                          : null,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '₹${expense.amount.toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          if (trip.isStarted) ...[
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                size: 18,
+                                color: Colors.red,
+                              ),
+                              onPressed: () => _deleteExpense(trip, expense),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
-                  )),
+                  ),
                 ],
               ],
             ),
@@ -459,15 +596,31 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
             const SizedBox(height: 12),
             Row(
               children: [
-                _statBox('End KM', trip.endKm != null ? '${trip.endKm!.toStringAsFixed(0)}' : '—'),
-                _statBox('Diesel Used', trip.dieselUsed != null ? '${trip.dieselUsed!.toStringAsFixed(1)} L' : '—'),
-                _statBox('Revenue', trip.revenueAmount != null ? '₹${trip.revenueAmount!.toStringAsFixed(0)}' : '—'),
+                _statBox(
+                  'End KM',
+                  trip.endKm != null ? trip.endKm!.toStringAsFixed(0) : '—',
+                ),
+                _statBox(
+                  'Diesel Used',
+                  trip.dieselUsed != null
+                      ? '${trip.dieselUsed!.toStringAsFixed(1)} L'
+                      : '—',
+                ),
+                _statBox(
+                  'Revenue',
+                  trip.revenueAmount != null
+                      ? '₹${trip.revenueAmount!.toStringAsFixed(0)}'
+                      : '—',
+                ),
               ],
             ),
             if (trip.endTime != null) ...[
               const SizedBox(height: 8),
-              _infoRow(Icons.check_circle_outline, 'Completed At',
-                  DateFormat('dd MMM, hh:mm a').format(trip.endTime!.toLocal())),
+              _infoRow(
+                Icons.check_circle_outline,
+                'Completed At',
+                DateFormat('dd MMM, hh:mm a').format(trip.endTime!.toLocal()),
+              ),
             ],
           ],
         ),
@@ -482,7 +635,14 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
       children: [
         Icon(icon, size: 16, color: color),
         const SizedBox(width: 6),
-        Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
       ],
     );
   }
@@ -491,7 +651,10 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
     return Expanded(
       child: Column(
         children: [
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
           const SizedBox(height: 2),
           Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
         ],
@@ -506,9 +669,16 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
         children: [
           Icon(icon, size: 14, color: Colors.grey[500]),
           const SizedBox(width: 6),
-          Text('$label: ', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          Text(
+            '$label: ',
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
           Expanded(
-            child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),

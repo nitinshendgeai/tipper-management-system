@@ -5,15 +5,16 @@ import '../../../core/storage/token_storage.dart';
 import '../models/assignment_model.dart';
 
 class AllocationService {
-
   final Dio _dio = Dio();
 
   Future<Options> _authOptions() async {
     final token = await TokenStorage.getToken();
-    return Options(headers: {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    });
+    return Options(
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
   }
 
   // ─── List active assignments ─────────────────────────────────────────────
@@ -23,17 +24,19 @@ class AllocationService {
       '${ApiConstants.baseUrl}/allocations/active',
     );
     final List data = response.data as List;
-    return data.map((e) => AssignmentModel.fromJson(e as Map<String, dynamic>)).toList();
+    return data
+        .map((e) => AssignmentModel.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   // ─── List all assignments (history) ─────────────────────────────────────
 
   Future<List<AssignmentModel>> getAllAssignments() async {
-    final response = await _dio.get(
-      '${ApiConstants.baseUrl}/allocations/',
-    );
+    final response = await _dio.get('${ApiConstants.baseUrl}/allocations/');
     final List data = response.data as List;
-    return data.map((e) => AssignmentModel.fromJson(e as Map<String, dynamic>)).toList();
+    return data
+        .map((e) => AssignmentModel.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   // ─── Get vehicle assignment status ──────────────────────────────────────
@@ -43,7 +46,8 @@ class AllocationService {
       '${ApiConstants.baseUrl}/allocations/vehicle/$vehicleId/status',
     );
     return VehicleAssignmentStatus.fromJson(
-        response.data as Map<String, dynamic>);
+      response.data as Map<String, dynamic>,
+    );
   }
 
   // ─── Create assignment ───────────────────────────────────────────────────
@@ -60,7 +64,10 @@ class AllocationService {
 
   // ─── Release assignment ──────────────────────────────────────────────────
 
-  Future<AssignmentModel> releaseAssignment(int assignmentId, {String? remarks}) async {
+  Future<AssignmentModel> releaseAssignment(
+    int assignmentId, {
+    String? remarks,
+  }) async {
     final options = await _authOptions();
     final response = await _dio.put(
       '${ApiConstants.baseUrl}/allocations/$assignmentId/release',

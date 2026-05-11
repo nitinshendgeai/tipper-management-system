@@ -5,12 +5,10 @@ import '../../../core/storage/token_storage.dart';
 import '../models/driver_model.dart';
 
 class DriverService {
-
   final Dio _dio = Dio();
 
   /// Builds Dio request options with the stored Bearer token.
   Future<Options> _authOptions() async {
-
     final token = await TokenStorage.getToken();
 
     return Options(
@@ -25,10 +23,7 @@ class DriverService {
 
   /// Fetches all active drivers from the backend.
   Future<List<DriverModel>> getDrivers() async {
-
-    final response = await _dio.get(
-      '${ApiConstants.baseUrl}/drivers/',
-    );
+    final response = await _dio.get('${ApiConstants.baseUrl}/drivers/');
 
     final List data = response.data as List;
 
@@ -41,7 +36,6 @@ class DriverService {
 
   /// Creates a new driver. Requires admin JWT token.
   Future<DriverModel> createDriver(Map<String, dynamic> payload) async {
-
     final options = await _authOptions();
 
     final response = await _dio.post(
@@ -60,7 +54,6 @@ class DriverService {
     int driverId,
     Map<String, dynamic> payload,
   ) async {
-
     final options = await _authOptions();
 
     final response = await _dio.put(
@@ -76,7 +69,6 @@ class DriverService {
 
   /// Soft-deletes a driver by ID. Requires admin JWT token.
   Future<void> deleteDriver(int driverId) async {
-
     final options = await _authOptions();
 
     await _dio.delete(

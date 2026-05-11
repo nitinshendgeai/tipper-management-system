@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../services/route_service.dart';
 
 class AddRouteScreen extends StatefulWidget {
-
   const AddRouteScreen({super.key});
 
   @override
@@ -11,7 +10,6 @@ class AddRouteScreen extends StatefulWidget {
 }
 
 class _AddRouteScreenState extends State<AddRouteScreen> {
-
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final RouteService _routeService = RouteService();
 
@@ -35,13 +33,11 @@ class _AddRouteScreenState extends State<AddRouteScreen> {
   // ─── Save ─────────────────────────────────────────────────────────────────
 
   Future<void> _saveRoute() async {
-
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-
       final payload = <String, dynamic>{
         'source_location': _sourceController.text.trim(),
         'destination_location': _destinationController.text.trim(),
@@ -62,9 +58,7 @@ class _AddRouteScreenState extends State<AddRouteScreen> {
         );
         Navigator.pop(context, true); // triggers list refresh
       }
-
     } catch (e) {
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -74,14 +68,12 @@ class _AddRouteScreenState extends State<AddRouteScreen> {
           ),
         );
       }
-
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
   String _parseError(Object e) {
-
     final msg = e.toString();
 
     if (msg.contains('already exists')) {
@@ -92,8 +84,7 @@ class _AddRouteScreenState extends State<AddRouteScreen> {
       return 'Permission denied — admin access required.';
     }
     if (msg.contains('422')) return 'Invalid data — check all fields.';
-    if (msg.contains('SocketException') ||
-        msg.contains('Connection refused')) {
+    if (msg.contains('SocketException') || msg.contains('Connection refused')) {
       return 'Cannot reach server — check your connection.';
     }
 
@@ -104,27 +95,19 @@ class _AddRouteScreenState extends State<AddRouteScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
-
-      appBar: AppBar(
-        title: const Text('Add Route'),
-      ),
+      appBar: AppBar(title: const Text('Add Route')),
 
       body: SingleChildScrollView(
-
         padding: const EdgeInsets.all(20),
 
         child: Form(
-
           key: _formKey,
 
           child: Column(
-
             crossAxisAlignment: CrossAxisAlignment.start,
 
             children: [
-
               // ── Section: Route Details ───────────────────────────────
               _sectionHeader('Route Details'),
               const SizedBox(height: 16),
@@ -135,10 +118,9 @@ class _AddRouteScreenState extends State<AddRouteScreen> {
                 hint: 'e.g. Mumbai',
                 textCapitalization: TextCapitalization.words,
                 prefixIcon: Icons.location_on_outlined,
-                validator: (v) =>
-                    v == null || v.trim().isEmpty
-                        ? 'Source location is required'
-                        : null,
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'Source location is required'
+                    : null,
               ),
 
               // Direction indicator
@@ -146,13 +128,15 @@ class _AddRouteScreenState extends State<AddRouteScreen> {
                 padding: const EdgeInsets.only(left: 14, bottom: 12),
                 child: Row(
                   children: [
-                    Icon(Icons.arrow_downward,
-                        size: 18, color: Colors.teal[400]),
+                    Icon(
+                      Icons.arrow_downward,
+                      size: 18,
+                      color: Colors.teal[400],
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       'to',
-                      style: TextStyle(
-                          color: Colors.grey[600], fontSize: 13),
+                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
                     ),
                   ],
                 ),
@@ -266,7 +250,6 @@ class _AddRouteScreenState extends State<AddRouteScreen> {
   // ─── Helper Widgets ───────────────────────────────────────────────────────
 
   Widget _sectionHeader(String title) {
-
     return Text(
       title,
       style: const TextStyle(
@@ -288,7 +271,6 @@ class _AddRouteScreenState extends State<AddRouteScreen> {
     int maxLines = 1,
     String? Function(String?)? validator,
   }) {
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
@@ -300,8 +282,10 @@ class _AddRouteScreenState extends State<AddRouteScreen> {
           labelText: label,
           hintText: hint,
           border: const OutlineInputBorder(),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
           prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
         ),
         validator: validator,

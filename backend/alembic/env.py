@@ -15,6 +15,7 @@ sys.path.append(
 )
 
 from app.db.session import Base
+from app.core.config import DATABASE_URL
 from app.models import *
 
 # this is the Alembic Config object
@@ -26,6 +27,7 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 target_metadata = Base.metadata
+config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 
 def run_migrations_offline():

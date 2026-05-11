@@ -3,7 +3,6 @@ import 'package:dio/dio.dart';
 import '../../../core/constants/api_constants.dart';
 
 class RouteCalculationResult {
-
   final String origin;
   final String destination;
   final double distanceKm;
@@ -32,7 +31,8 @@ class RouteCalculationResult {
       destination: json['destination'] as String? ?? '',
       distanceKm: (json['distance_km'] as num?)?.toDouble() ?? 0.0,
       durationMin: json['duration_min'] as int? ?? 0,
-      estimatedDieselLitres: (json['estimated_diesel_litres'] as num?)?.toDouble() ?? 0.0,
+      estimatedDieselLitres:
+          (json['estimated_diesel_litres'] as num?)?.toDouble() ?? 0.0,
       source: json['source'] as String? ?? 'formula_estimate',
       rawDistanceText: json['raw_distance_text'] as String?,
       rawDurationText: json['raw_duration_text'] as String?,
@@ -40,9 +40,7 @@ class RouteCalculationResult {
   }
 }
 
-
 class RouteIntelligenceService {
-
   final Dio _dio = Dio();
 
   Future<RouteCalculationResult> calculateRoute({
@@ -51,13 +49,10 @@ class RouteIntelligenceService {
   }) async {
     final response = await _dio.post(
       '${ApiConstants.baseUrl}/route-intelligence/calculate',
-      data: {
-        'origin': origin,
-        'destination': destination,
-        'mode': 'driving',
-      },
+      data: {'origin': origin, 'destination': destination, 'mode': 'driving'},
     );
     return RouteCalculationResult.fromJson(
-        response.data as Map<String, dynamic>);
+      response.data as Map<String, dynamic>,
+    );
   }
 }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 class TripStatusBadge extends StatelessWidget {
-
   final String status;
 
   const TripStatusBadge({super.key, required this.status});
@@ -41,7 +40,6 @@ class TripStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(

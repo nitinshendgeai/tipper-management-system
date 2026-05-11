@@ -51,7 +51,7 @@ class DriverVehicleAssignment(Base):
     # Who created this assignment (user.id)
     assigned_by = Column(
         Integer,
-        ForeignKey("master.users.id"),
+        ForeignKey("auth.users.id"),
         nullable=True
     )
 

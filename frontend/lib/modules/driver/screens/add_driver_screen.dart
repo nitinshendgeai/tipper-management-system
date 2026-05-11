@@ -5,7 +5,6 @@ import '../../vehicle/services/vehicle_service.dart';
 import '../services/driver_service.dart';
 
 class AddDriverScreen extends StatefulWidget {
-
   const AddDriverScreen({super.key});
 
   @override
@@ -13,7 +12,6 @@ class AddDriverScreen extends StatefulWidget {
 }
 
 class _AddDriverScreenState extends State<AddDriverScreen> {
-
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final DriverService _driverService = DriverService();
   final VehicleService _vehicleService = VehicleService();
@@ -56,7 +54,6 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
   // ─── Load vehicle dropdown ────────────────────────────────────────────────
 
   Future<void> _fetchVehicles() async {
-
     setState(() => _isLoadingVehicles = true);
 
     try {
@@ -72,18 +69,15 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
   // ─── Save ─────────────────────────────────────────────────────────────────
 
   Future<void> _saveDriver() async {
-
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-
       final payload = <String, dynamic>{
         'full_name': _fullNameController.text.trim(),
         'mobile_number': _mobileController.text.trim(),
-        'license_number':
-            _licenseNumberController.text.trim().toUpperCase(),
+        'license_number': _licenseNumberController.text.trim().toUpperCase(),
         'license_expiry': _licenseExpiryController.text.trim(),
         'aadhaar_number': _aadhaarController.text.trim(),
         'address': _addressController.text.trim(),
@@ -103,9 +97,7 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
         );
         Navigator.pop(context, true); // triggers list refresh
       }
-
     } catch (e) {
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -115,14 +107,12 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
           ),
         );
       }
-
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
   String _parseError(Object e) {
-
     final msg = e.toString();
 
     if (msg.contains('already exists')) {
@@ -133,8 +123,7 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
       return 'Permission denied — admin access required.';
     }
     if (msg.contains('422')) return 'Invalid data — check all fields.';
-    if (msg.contains('SocketException') ||
-        msg.contains('Connection refused')) {
+    if (msg.contains('SocketException') || msg.contains('Connection refused')) {
       return 'Cannot reach server — check your connection.';
     }
 
@@ -145,27 +134,19 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
-
-      appBar: AppBar(
-        title: const Text('Add Driver'),
-      ),
+      appBar: AppBar(title: const Text('Add Driver')),
 
       body: SingleChildScrollView(
-
         padding: const EdgeInsets.all(20),
 
         child: Form(
-
           key: _formKey,
 
           child: Column(
-
             crossAxisAlignment: CrossAxisAlignment.start,
 
             children: [
-
               // ── Section: Personal Details ────────────────────────────
               _sectionHeader('Personal Details'),
               const SizedBox(height: 16),
@@ -175,10 +156,9 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
                 label: 'Full Name *',
                 hint: 'Driver\'s full legal name',
                 textCapitalization: TextCapitalization.words,
-                validator: (v) =>
-                    v == null || v.trim().isEmpty
-                        ? 'Full name is required'
-                        : null,
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'Full name is required'
+                    : null,
               ),
 
               _buildField(
@@ -219,10 +199,9 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
                 hint: 'Residential address',
                 maxLines: 2,
                 textCapitalization: TextCapitalization.sentences,
-                validator: (v) =>
-                    v == null || v.trim().isEmpty
-                        ? 'Address is required'
-                        : null,
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'Address is required'
+                    : null,
               ),
 
               _buildField(
@@ -340,7 +319,6 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
   // ─── Vehicle Dropdown ─────────────────────────────────────────────────────
 
   Widget _buildVehicleDropdown() {
-
     if (_isLoadingVehicles) {
       return const Padding(
         padding: EdgeInsets.only(bottom: 16),
@@ -357,12 +335,11 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: DropdownButtonFormField<int?>(
-        value: _selectedVehicleId,
+        initialValue: _selectedVehicleId,
         decoration: const InputDecoration(
           labelText: 'Assigned Vehicle (optional)',
           border: OutlineInputBorder(),
-          contentPadding:
-              EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           prefixIcon: Icon(Icons.fire_truck_outlined),
         ),
         items: [
@@ -385,7 +362,6 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
   // ─── Helper Widgets ───────────────────────────────────────────────────────
 
   Widget _sectionHeader(String title) {
-
     return Text(
       title,
       style: const TextStyle(
@@ -406,7 +382,6 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
     int maxLines = 1,
     String? Function(String?)? validator,
   }) {
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
@@ -418,8 +393,10 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
           labelText: label,
           hintText: hint,
           border: const OutlineInputBorder(),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
         ),
         validator: validator,
       ),

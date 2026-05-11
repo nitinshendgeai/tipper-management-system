@@ -7,7 +7,6 @@ import 'add_route_screen.dart';
 import 'edit_route_screen.dart';
 
 class RouteScreen extends StatefulWidget {
-
   const RouteScreen({super.key});
 
   @override
@@ -15,7 +14,6 @@ class RouteScreen extends StatefulWidget {
 }
 
 class _RouteScreenState extends State<RouteScreen> {
-
   final RouteService _routeService = RouteService();
 
   late Future<List<RouteModel>> _routesFuture;
@@ -37,24 +35,18 @@ class _RouteScreenState extends State<RouteScreen> {
   // ─── Navigation ───────────────────────────────────────────────────────────
 
   Future<void> _openAddRoute() async {
-
     final bool? result = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(
-        builder: (_) => const AddRouteScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const AddRouteScreen()),
     );
 
     if (result == true) _loadRoutes();
   }
 
   Future<void> _openEditRoute(RouteModel route) async {
-
     final bool? result = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(
-        builder: (_) => EditRouteScreen(route: route),
-      ),
+      MaterialPageRoute(builder: (_) => EditRouteScreen(route: route)),
     );
 
     if (result == true) _loadRoutes();
@@ -63,13 +55,10 @@ class _RouteScreenState extends State<RouteScreen> {
   // ─── Delete ───────────────────────────────────────────────────────────────
 
   Future<void> _confirmDelete(RouteModel route) async {
-
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: const Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.red),
@@ -104,9 +93,7 @@ class _RouteScreenState extends State<RouteScreen> {
   }
 
   Future<void> _deleteRoute(RouteModel route) async {
-
     try {
-
       await _routeService.deleteRoute(route.id);
 
       if (mounted) {
@@ -121,9 +108,7 @@ class _RouteScreenState extends State<RouteScreen> {
         );
         _loadRoutes();
       }
-
     } catch (e) {
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -139,7 +124,6 @@ class _RouteScreenState extends State<RouteScreen> {
   // ─── Error helper ─────────────────────────────────────────────────────────
 
   String _parseError(Object e, String fallback) {
-
     final msg = e.toString();
 
     if (msg.contains('401')) return 'Unauthorized — please login again.';
@@ -147,8 +131,7 @@ class _RouteScreenState extends State<RouteScreen> {
       return 'Permission denied — admin access required.';
     }
     if (msg.contains('404')) return 'Route not found.';
-    if (msg.contains('SocketException') ||
-        msg.contains('Connection refused')) {
+    if (msg.contains('SocketException') || msg.contains('Connection refused')) {
       return 'Cannot reach server — check your connection.';
     }
 
@@ -159,9 +142,7 @@ class _RouteScreenState extends State<RouteScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
-
       appBar: AppBar(
         title: const Text('Routes'),
         actions: [
@@ -183,11 +164,9 @@ class _RouteScreenState extends State<RouteScreen> {
       ),
 
       body: FutureBuilder<List<RouteModel>>(
-
         future: _routesFuture,
 
         builder: (context, snapshot) {
-
           // ── Loading ──────────────────────────────────────────────────
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -240,11 +219,7 @@ class _RouteScreenState extends State<RouteScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.route_outlined,
-                    size: 80,
-                    color: Colors.grey[350],
-                  ),
+                  Icon(Icons.route_outlined, size: 80, color: Colors.grey[350]),
                   const SizedBox(height: 16),
                   Text(
                     'No Routes Yet',
@@ -269,7 +244,6 @@ class _RouteScreenState extends State<RouteScreen> {
             padding: const EdgeInsets.only(top: 8, bottom: 100),
             itemCount: routes.length,
             itemBuilder: (context, index) {
-
               final route = routes[index];
 
               return RouteCard(

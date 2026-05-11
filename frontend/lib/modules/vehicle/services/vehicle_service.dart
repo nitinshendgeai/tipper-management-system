@@ -5,12 +5,10 @@ import '../../../core/storage/token_storage.dart';
 import '../models/vehicle_model.dart';
 
 class VehicleService {
-
   final Dio _dio = Dio();
 
   /// Builds Dio request options with the stored Bearer token.
   Future<Options> _authOptions() async {
-
     final token = await TokenStorage.getToken();
 
     return Options(
@@ -25,10 +23,7 @@ class VehicleService {
 
   /// Fetches all active vehicles from the backend.
   Future<List<VehicleModel>> getVehicles() async {
-
-    final response = await _dio.get(
-      '${ApiConstants.baseUrl}/vehicles/',
-    );
+    final response = await _dio.get('${ApiConstants.baseUrl}/vehicles/');
 
     final List data = response.data as List;
 
@@ -41,7 +36,6 @@ class VehicleService {
 
   /// Creates a new vehicle. Requires admin JWT token.
   Future<VehicleModel> createVehicle(Map<String, dynamic> payload) async {
-
     final options = await _authOptions();
 
     final response = await _dio.post(
@@ -60,7 +54,6 @@ class VehicleService {
     int vehicleId,
     Map<String, dynamic> payload,
   ) async {
-
     final options = await _authOptions();
 
     final response = await _dio.put(
@@ -76,7 +69,6 @@ class VehicleService {
 
   /// Soft-deletes a vehicle by ID. Requires admin JWT token.
   Future<void> deleteVehicle(int vehicleId) async {
-
     final options = await _authOptions();
 
     await _dio.delete(

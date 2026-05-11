@@ -5,12 +5,10 @@ import '../../../core/storage/token_storage.dart';
 import '../models/route_model.dart';
 
 class RouteService {
-
   final Dio _dio = Dio();
 
   /// Builds Dio request options with the stored Bearer token.
   Future<Options> _authOptions() async {
-
     final token = await TokenStorage.getToken();
 
     return Options(
@@ -25,10 +23,7 @@ class RouteService {
 
   /// Fetches all active routes from the backend.
   Future<List<RouteModel>> getRoutes() async {
-
-    final response = await _dio.get(
-      '${ApiConstants.baseUrl}/routes/',
-    );
+    final response = await _dio.get('${ApiConstants.baseUrl}/routes/');
 
     final List data = response.data as List;
 
@@ -41,7 +36,6 @@ class RouteService {
 
   /// Creates a new route. Requires admin JWT token.
   Future<RouteModel> createRoute(Map<String, dynamic> payload) async {
-
     final options = await _authOptions();
 
     final response = await _dio.post(
@@ -60,7 +54,6 @@ class RouteService {
     int routeId,
     Map<String, dynamic> payload,
   ) async {
-
     final options = await _authOptions();
 
     final response = await _dio.put(
@@ -76,7 +69,6 @@ class RouteService {
 
   /// Soft-deletes a route by ID. Requires admin JWT token.
   Future<void> deleteRoute(int routeId) async {
-
     final options = await _authOptions();
 
     await _dio.delete(

@@ -5,7 +5,6 @@ import '../models/route_model.dart';
 /// Reusable card displaying route details with Edit and Delete actions.
 /// Follows the same pattern as VehicleCard and DriverCard.
 class RouteCard extends StatelessWidget {
-
   final RouteModel route;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -19,24 +18,19 @@ class RouteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             // ── Header: route icon + source→destination + actions ────────
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-
                 Expanded(
                   child: Row(
                     children: [
@@ -96,7 +90,6 @@ class RouteCard extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-
                     InkWell(
                       onTap: onEdit,
                       borderRadius: BorderRadius.circular(8),
@@ -136,7 +129,6 @@ class RouteCard extends StatelessWidget {
             // ── Info row ─────────────────────────────────────────────────
             Row(
               children: [
-
                 Expanded(
                   child: _infoTile(
                     icon: Icons.straighten,
@@ -188,7 +180,6 @@ class RouteCard extends StatelessWidget {
     required String label,
     required String value,
   }) {
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

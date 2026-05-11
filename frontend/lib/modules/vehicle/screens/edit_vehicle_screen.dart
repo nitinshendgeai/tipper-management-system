@@ -4,7 +4,6 @@ import '../models/vehicle_model.dart';
 import '../services/vehicle_service.dart';
 
 class EditVehicleScreen extends StatefulWidget {
-
   final VehicleModel vehicle;
 
   const EditVehicleScreen({super.key, required this.vehicle});
@@ -14,7 +13,6 @@ class EditVehicleScreen extends StatefulWidget {
 }
 
 class _EditVehicleScreenState extends State<EditVehicleScreen> {
-
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final VehicleService _vehicleService = VehicleService();
 
@@ -33,20 +31,13 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
   void initState() {
     super.initState();
     final v = widget.vehicle;
-    _vehicleNumberController =
-        TextEditingController(text: v.vehicleNumber);
-    _vehicleTypeController =
-        TextEditingController(text: v.vehicleType);
-    _capacityController =
-        TextEditingController(text: v.capacityTon.toString());
-    _ownerController =
-        TextEditingController(text: v.ownerName);
-    _mobileController =
-        TextEditingController(text: v.mobileNumber);
-    _rcController =
-        TextEditingController(text: v.rcNumber);
-    _insuranceController =
-        TextEditingController(text: v.insuranceExpiry);
+    _vehicleNumberController = TextEditingController(text: v.vehicleNumber);
+    _vehicleTypeController = TextEditingController(text: v.vehicleType);
+    _capacityController = TextEditingController(text: v.capacityTon.toString());
+    _ownerController = TextEditingController(text: v.ownerName);
+    _mobileController = TextEditingController(text: v.mobileNumber);
+    _rcController = TextEditingController(text: v.rcNumber);
+    _insuranceController = TextEditingController(text: v.insuranceExpiry);
   }
 
   @override
@@ -64,16 +55,13 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
   // ─── Update ───────────────────────────────────────────────────────────────
 
   Future<void> _updateVehicle() async {
-
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-
       await _vehicleService.updateVehicle(widget.vehicle.id, {
-        'vehicle_number':
-            _vehicleNumberController.text.trim().toUpperCase(),
+        'vehicle_number': _vehicleNumberController.text.trim().toUpperCase(),
         'vehicle_type': _vehicleTypeController.text.trim(),
         'capacity_ton': int.parse(_capacityController.text.trim()),
         'owner_name': _ownerController.text.trim(),
@@ -93,9 +81,7 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
         // Return true so VehicleScreen knows to refresh
         Navigator.pop(context, true);
       }
-
     } catch (e) {
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -105,14 +91,12 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
           ),
         );
       }
-
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
   String _parseError(Object e) {
-
     final msg = e.toString();
 
     if (msg.contains('already exists')) {
@@ -134,27 +118,19 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
-
-      appBar: AppBar(
-        title: Text('Edit ${widget.vehicle.vehicleNumber}'),
-      ),
+      appBar: AppBar(title: Text('Edit ${widget.vehicle.vehicleNumber}')),
 
       body: SingleChildScrollView(
-
         padding: const EdgeInsets.all(20),
 
         child: Form(
-
           key: _formKey,
 
           child: Column(
-
             crossAxisAlignment: CrossAxisAlignment.start,
 
             children: [
-
               // ── Section: Vehicle Information ─────────────────────────────
               _sectionHeader('Vehicle Information'),
               const SizedBox(height: 16),
@@ -178,10 +154,9 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
                 controller: _vehicleTypeController,
                 label: 'Vehicle Type *',
                 hint: 'e.g. Tipper, Truck, Dumper',
-                validator: (v) =>
-                    v == null || v.trim().isEmpty
-                        ? 'Vehicle type is required'
-                        : null,
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'Vehicle type is required'
+                    : null,
               ),
 
               _buildField(
@@ -209,10 +184,9 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
                 controller: _ownerController,
                 label: 'Owner Name *',
                 textCapitalization: TextCapitalization.words,
-                validator: (v) =>
-                    v == null || v.trim().isEmpty
-                        ? 'Owner name is required'
-                        : null,
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'Owner name is required'
+                    : null,
               ),
 
               _buildField(
@@ -240,10 +214,9 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
                 controller: _rcController,
                 label: 'RC Number *',
                 textCapitalization: TextCapitalization.characters,
-                validator: (v) =>
-                    v == null || v.trim().isEmpty
-                        ? 'RC number is required'
-                        : null,
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'RC number is required'
+                    : null,
               ),
 
               _buildField(
@@ -310,7 +283,6 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
   // ─── Helper Widgets ───────────────────────────────────────────────────────
 
   Widget _sectionHeader(String title) {
-
     return Text(
       title,
       style: const TextStyle(
@@ -330,7 +302,6 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
     TextCapitalization textCapitalization = TextCapitalization.none,
     String? Function(String?)? validator,
   }) {
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
@@ -341,8 +312,10 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
           labelText: label,
           hintText: hint,
           border: const OutlineInputBorder(),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
         ),
         validator: validator,
       ),

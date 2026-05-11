@@ -1,5 +1,4 @@
 class TripExpenseModel {
-
   final int id;
   final int tripId;
   final String expenseType;
@@ -30,9 +29,7 @@ class TripExpenseModel {
   }
 }
 
-
 class TripExpenseSummary {
-
   final int tripId;
   final double totalAmount;
   final List<TripExpenseModel> expenses;
@@ -59,7 +56,6 @@ class TripExpenseSummary {
     );
   }
 }
-
 
 /// Expense type options (mirrors backend ExpenseType)
 const List<String> kExpenseTypes = [

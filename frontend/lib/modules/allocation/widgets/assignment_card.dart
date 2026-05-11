@@ -4,31 +4,34 @@ import 'package:intl/intl.dart';
 import '../models/assignment_model.dart';
 
 class AssignmentCard extends StatelessWidget {
-
   final AssignmentModel assignment;
   final VoidCallback? onRelease;
 
-  const AssignmentCard({
-    super.key,
-    required this.assignment,
-    this.onRelease,
-  });
+  const AssignmentCard({super.key, required this.assignment, this.onRelease});
 
   Color get _vehicleStatusColor {
     switch (assignment.vehicleStatus) {
-      case 'ON_TRIP': return Colors.orange;
-      case 'ASSIGNED': return Colors.blue;
-      case 'MAINTENANCE': return Colors.red;
-      default: return Colors.green;
+      case 'ON_TRIP':
+        return Colors.orange;
+      case 'ASSIGNED':
+        return Colors.blue;
+      case 'MAINTENANCE':
+        return Colors.red;
+      default:
+        return Colors.green;
     }
   }
 
   Color get _driverStatusColor {
     switch (assignment.driverStatus) {
-      case 'ON_TRIP': return Colors.orange;
-      case 'AVAILABLE': return Colors.blue;
-      case 'BREAK': return Colors.purple;
-      default: return Colors.grey;
+      case 'ON_TRIP':
+        return Colors.orange;
+      case 'AVAILABLE':
+        return Colors.blue;
+      case 'BREAK':
+        return Colors.purple;
+      default:
+        return Colors.grey;
     }
   }
 
@@ -36,9 +39,9 @@ class AssignmentCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Text(
         label,
@@ -53,7 +56,6 @@ class AssignmentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     final fmt = DateFormat('dd MMM, hh:mm a');
 
     return Card(
@@ -65,11 +67,14 @@ class AssignmentCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             // ── Header ──────────────────────────────────────────────────────
             Row(
               children: [
-                const Icon(Icons.swap_horiz_rounded, size: 16, color: Colors.indigo),
+                const Icon(
+                  Icons.swap_horiz_rounded,
+                  size: 16,
+                  color: Colors.indigo,
+                ),
                 const SizedBox(width: 6),
                 Text(
                   'Assignment #${assignment.id}',
@@ -80,7 +85,10 @@ class AssignmentCard extends StatelessWidget {
                 ),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: assignment.isActive
                         ? Colors.green.shade50
@@ -92,7 +100,9 @@ class AssignmentCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
-                      color: assignment.isActive ? Colors.green[800] : Colors.grey[600],
+                      color: assignment.isActive
+                          ? Colors.green[800]
+                          : Colors.grey[600],
                     ),
                   ),
                 ),
@@ -106,12 +116,19 @@ class AssignmentCard extends StatelessWidget {
             // ── Vehicle row ──────────────────────────────────────────────────
             Row(
               children: [
-                const Icon(Icons.fire_truck_outlined, size: 16, color: Colors.indigo),
+                const Icon(
+                  Icons.fire_truck_outlined,
+                  size: 16,
+                  color: Colors.indigo,
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     '${assignment.vehicleNumber}  •  ${assignment.vehicleType ?? ''}',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
                 _statusChip(assignment.vehicleStatus, _vehicleStatusColor),
@@ -140,7 +157,11 @@ class AssignmentCard extends StatelessWidget {
             // ── Shift date + assigned at ──────────────────────────────────────
             Row(
               children: [
-                Icon(Icons.calendar_today_outlined, size: 13, color: Colors.grey[500]),
+                Icon(
+                  Icons.calendar_today_outlined,
+                  size: 13,
+                  color: Colors.grey[500],
+                ),
                 const SizedBox(width: 4),
                 Text(
                   assignment.shiftDate != null
@@ -149,7 +170,11 @@ class AssignmentCard extends StatelessWidget {
                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
                 const SizedBox(width: 16),
-                Icon(Icons.access_time_outlined, size: 13, color: Colors.grey[500]),
+                Icon(
+                  Icons.access_time_outlined,
+                  size: 13,
+                  color: Colors.grey[500],
+                ),
                 const SizedBox(width: 4),
                 Text(
                   assignment.assignedAt != null
@@ -160,7 +185,8 @@ class AssignmentCard extends StatelessWidget {
               ],
             ),
 
-            if (assignment.remarks != null && assignment.remarks!.isNotEmpty) ...[
+            if (assignment.remarks != null &&
+                assignment.remarks!.isNotEmpty) ...[
               const SizedBox(height: 4),
               Text(
                 assignment.remarks!,
@@ -180,8 +206,13 @@ class AssignmentCard extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.red,
                     side: const BorderSide(color: Colors.red),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
               ),

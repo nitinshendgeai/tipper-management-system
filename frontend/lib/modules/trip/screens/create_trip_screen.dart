@@ -11,7 +11,6 @@ import '../services/trip_service.dart';
 import '../services/route_intelligence_service.dart';
 
 class CreateTripScreen extends StatefulWidget {
-
   const CreateTripScreen({super.key});
 
   @override
@@ -19,11 +18,11 @@ class CreateTripScreen extends StatefulWidget {
 }
 
 class _CreateTripScreenState extends State<CreateTripScreen> {
-
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TripService _tripService = TripService();
   final AllocationService _allocationService = AllocationService();
-  final RouteIntelligenceService _routeIntelService = RouteIntelligenceService();
+  final RouteIntelligenceService _routeIntelService =
+      RouteIntelligenceService();
 
   // ─── Dropdown data ─────────────────────────────────────────────────────────
   List<VehicleModel> _vehicles = [];
@@ -45,7 +44,8 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
   // ─── Form controllers ──────────────────────────────────────────────────────
   final TextEditingController _sourceController = TextEditingController();
   final TextEditingController _destinationController = TextEditingController();
-  final TextEditingController _distanceOverrideController = TextEditingController();
+  final TextEditingController _distanceOverrideController =
+      TextEditingController();
   final TextEditingController _dieselIssuedController = TextEditingController();
   final TextEditingController _tripAdvanceController = TextEditingController();
   final TextEditingController _remarksController = TextEditingController();
@@ -74,7 +74,10 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
   // ─── Load dropdowns ─────────────────────────────────────────────────────────
 
   Future<void> _loadDropdowns() async {
-    setState(() { _loadingDropdowns = true; _dropdownError = null; });
+    setState(() {
+      _loadingDropdowns = true;
+      _dropdownError = null;
+    });
     try {
       final results = await Future.wait([
         VehicleService().getVehicles(),
@@ -91,7 +94,12 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _dropdownError = 'Failed to load data.'; _loadingDropdowns = false; });
+      if (mounted) {
+        setState(() {
+          _dropdownError = 'Failed to load data.';
+          _loadingDropdowns = false;
+        });
+      }
     }
   }
 
@@ -101,8 +109,8 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
     setState(() {
       _selectedVehicleId = vehicleId;
       _vehicleAssignment = null;
-      _driverFetchError  = null;
-      _fetchingDriver    = true;
+      _driverFetchError = null;
+      _fetchingDriver = true;
     });
 
     try {
@@ -111,7 +119,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
       if (mounted) {
         setState(() {
           _vehicleAssignment = status;
-          _fetchingDriver    = false;
+          _fetchingDriver = false;
 
           if (!status.isAssigned) {
             _driverFetchError = 'This vehicle has no active driver assignment.';
@@ -122,7 +130,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
       if (mounted) {
         setState(() {
           _driverFetchError = 'Could not fetch driver info.';
-          _fetchingDriver   = false;
+          _fetchingDriver = false;
         });
       }
     }
@@ -131,7 +139,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
   // ─── AI Route Calculation ──────────────────────────────────────────────────
 
   Future<void> _calculateRoute() async {
-    final src  = _sourceController.text.trim();
+    final src = _sourceController.text.trim();
     final dest = _destinationController.text.trim();
 
     if (src.isEmpty || dest.isEmpty) return;
@@ -139,7 +147,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
     setState(() {
       _calculatingRoute = true;
       _routeCalculation = null;
-      _routeCalcError   = null;
+      _routeCalcError = null;
     });
 
     try {
@@ -154,15 +162,16 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
           _calculatingRoute = false;
           // Pre-fill override with calculated distance
           if (_distanceOverrideController.text.isEmpty) {
-            _distanceOverrideController.text =
-                result.distanceKm.toStringAsFixed(1);
+            _distanceOverrideController.text = result.distanceKm
+                .toStringAsFixed(1);
           }
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _routeCalcError   = 'Route calculation failed. You can enter distance manually.';
+          _routeCalcError =
+              'Route calculation failed. You can enter distance manually.';
           _calculatingRoute = false;
         });
       }
@@ -177,7 +186,9 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
     if (_vehicleAssignment == null || !_vehicleAssignment!.isAssigned) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select a vehicle with an assigned driver first.'),
+          content: Text(
+            'Please select a vehicle with an assigned driver first.',
+          ),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
@@ -189,14 +200,14 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
 
     try {
       final payload = <String, dynamic>{
-        'vehicle_id':          _selectedVehicleId,
-        'source_location':     _sourceController.text.trim(),
+        'vehicle_id': _selectedVehicleId,
+        'source_location': _sourceController.text.trim(),
         'destination_location': _destinationController.text.trim(),
         if (_selectedRouteId != null) 'route_id': _selectedRouteId,
         if (_routeCalculation != null) ...{
           'calculated_distance_km': _routeCalculation!.distanceKm,
           'estimated_duration_min': _routeCalculation!.durationMin,
-          'estimated_diesel':       _routeCalculation!.estimatedDieselLitres,
+          'estimated_diesel': _routeCalculation!.estimatedDieselLitres,
         },
       };
 
@@ -226,7 +237,6 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
         );
         Navigator.pop(context, true);
       }
-
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -246,9 +256,15 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
     final msg = e.toString();
     if (msg.contains('401')) return 'Session expired — please login again.';
     if (msg.contains('403')) return 'Permission denied.';
-    if (msg.contains('no active driver')) return 'Assign a driver to this vehicle first.';
-    if (msg.contains('ON_TRIP')) return 'Vehicle or driver is already on a trip.';
-    if (msg.contains('409')) return 'Conflict — check active trips or assignments.';
+    if (msg.contains('no active driver')) {
+      return 'Assign a driver to this vehicle first.';
+    }
+    if (msg.contains('ON_TRIP')) {
+      return 'Vehicle or driver is already on a trip.';
+    }
+    if (msg.contains('409')) {
+      return 'Conflict — check active trips or assignments.';
+    }
     if (msg.contains('SocketException') || msg.contains('Connection refused')) {
       return 'Cannot reach server — check your connection.';
     }
@@ -264,8 +280,8 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
       body: _loadingDropdowns
           ? const Center(child: CircularProgressIndicator())
           : _dropdownError != null
-              ? _buildError()
-              : _buildForm(),
+          ? _buildError()
+          : _buildForm(),
     );
   }
 
@@ -278,7 +294,11 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
           const SizedBox(height: 12),
           Text(_dropdownError!, textAlign: TextAlign.center),
           const SizedBox(height: 20),
-          ElevatedButton.icon(onPressed: _loadDropdowns, icon: const Icon(Icons.refresh), label: const Text('Retry')),
+          ElevatedButton.icon(
+            onPressed: _loadDropdowns,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Retry'),
+          ),
         ],
       ),
     );
@@ -292,7 +312,6 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             // ── STEP 1: Vehicle ────────────────────────────────────────────
             _sectionHeader('Step 1 — Select Vehicle'),
             const SizedBox(height: 6),
@@ -303,23 +322,38 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
             const SizedBox(height: 12),
 
             DropdownButtonFormField<int>(
-              value: _selectedVehicleId,
+              initialValue: _selectedVehicleId,
               decoration: const InputDecoration(
                 labelText: 'Vehicle *',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.fire_truck_outlined),
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
               ),
               items: _vehicles.isEmpty
-                  ? [const DropdownMenuItem(value: -1, child: Text('No assigned vehicles available'))]
-                  : _vehicles.map((v) => DropdownMenuItem<int>(
-                        value: v.id,
-                        child: Text('${v.vehicleNumber}  —  ${v.vehicleType ?? ''}'),
-                      )).toList(),
+                  ? [
+                      const DropdownMenuItem(
+                        value: -1,
+                        child: Text('No assigned vehicles available'),
+                      ),
+                    ]
+                  : _vehicles
+                        .map(
+                          (v) => DropdownMenuItem<int>(
+                            value: v.id,
+                            child: Text(
+                              '${v.vehicleNumber}  —  ${v.vehicleType}',
+                            ),
+                          ),
+                        )
+                        .toList(),
               onChanged: (val) {
                 if (val != null && val != -1) _onVehicleSelected(val);
               },
-              validator: (v) => (v == null || v == -1) ? 'Please select a vehicle' : null,
+              validator: (v) =>
+                  (v == null || v == -1) ? 'Please select a vehicle' : null,
             ),
 
             const SizedBox(height: 12),
@@ -339,7 +373,8 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
               hint: 'e.g. Mumbai, Maharashtra',
               prefixIcon: Icons.location_on_outlined,
               textCapitalization: TextCapitalization.words,
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Source is required' : null,
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Source is required' : null,
             ),
 
             _buildField(
@@ -349,8 +384,11 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
               prefixIcon: Icons.location_on,
               textCapitalization: TextCapitalization.words,
               validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Destination is required';
-                if (v.trim().toLowerCase() == _sourceController.text.trim().toLowerCase()) {
+                if (v == null || v.trim().isEmpty) {
+                  return 'Destination is required';
+                }
+                if (v.trim().toLowerCase() ==
+                    _sourceController.text.trim().toLowerCase()) {
                   return 'Source and destination cannot be the same';
                 }
                 return null;
@@ -363,14 +401,24 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
               child: OutlinedButton.icon(
                 onPressed: _calculatingRoute ? null : _calculateRoute,
                 icon: _calculatingRoute
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Icon(Icons.auto_awesome, size: 18),
-                label: Text(_calculatingRoute ? 'Calculating...' : 'AI: Calculate Route Distance & Time'),
+                label: Text(
+                  _calculatingRoute
+                      ? 'Calculating...'
+                      : 'AI: Calculate Route Distance & Time',
+                ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.deepPurple,
                   side: const BorderSide(color: Colors.deepPurple),
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
             ),
@@ -391,9 +439,18 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
+                      const Icon(
+                        Icons.warning_amber_rounded,
+                        color: Colors.orange,
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
-                      Expanded(child: Text(_routeCalcError!, style: const TextStyle(fontSize: 12))),
+                      Expanded(
+                        child: Text(
+                          _routeCalcError!,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -401,19 +458,27 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
 
             // ── Optional route master reference ────────────────────────────
             DropdownButtonFormField<int>(
-              value: _selectedRouteId,
+              initialValue: _selectedRouteId,
               decoration: const InputDecoration(
                 labelText: 'Route Master Reference (optional)',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.route_outlined),
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
               ),
               items: [
                 const DropdownMenuItem<int>(value: null, child: Text('None')),
-                ..._routes.map((r) => DropdownMenuItem<int>(
-                      value: r.id,
-                      child: Text('${r.sourceLocation} → ${r.destinationLocation}', overflow: TextOverflow.ellipsis),
-                    )),
+                ..._routes.map(
+                  (r) => DropdownMenuItem<int>(
+                    value: r.id,
+                    child: Text(
+                      '${r.sourceLocation} → ${r.destinationLocation}',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
               ],
               onChanged: (val) => setState(() => _selectedRouteId = val),
             ),
@@ -428,7 +493,9 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
               controller: _distanceOverrideController,
               label: 'Distance Override (km)',
               hint: 'Override AI calculated distance',
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               prefixIcon: Icons.straighten,
               validator: (v) {
                 if (v != null && v.trim().isNotEmpty) {
@@ -443,7 +510,9 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
               controller: _dieselIssuedController,
               label: 'Diesel Issued (litres, optional)',
               hint: 'e.g. 80',
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               prefixIcon: Icons.local_gas_station_outlined,
               validator: (v) {
                 if (v != null && v.trim().isNotEmpty) {
@@ -458,7 +527,9 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
               controller: _tripAdvanceController,
               label: 'Trip Advance (₹, optional)',
               hint: 'e.g. 500',
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               prefixIcon: Icons.currency_rupee,
               validator: (v) {
                 if (v != null && v.trim().isNotEmpty) {
@@ -488,12 +559,28 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.teal,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   elevation: 2,
                 ),
                 child: _isSubmitting
-                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                    : const Text('CREATE TRIP', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
+                      )
+                    : const Text(
+                        'CREATE TRIP',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
               ),
             ),
 
@@ -519,8 +606,10 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
           children: [
             Icon(Icons.person_outline, color: Colors.grey[400]),
             const SizedBox(width: 8),
-            Text('Select a vehicle to auto-fetch assigned driver',
-                style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+            Text(
+              'Select a vehicle to auto-fetch assigned driver',
+              style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+            ),
           ],
         ),
       );
@@ -535,7 +624,11 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
         ),
         child: const Row(
           children: [
-            SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
             SizedBox(width: 10),
             Text('Fetching assigned driver...', style: TextStyle(fontSize: 13)),
           ],
@@ -555,7 +648,12 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
           children: [
             const Icon(Icons.error_outline, color: Colors.red, size: 18),
             const SizedBox(width: 8),
-            Expanded(child: Text(_driverFetchError!, style: const TextStyle(fontSize: 13, color: Colors.red))),
+            Expanded(
+              child: Text(
+                _driverFetchError!,
+                style: const TextStyle(fontSize: 13, color: Colors.red),
+              ),
+            ),
           ],
         ),
       );
@@ -588,16 +686,29 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
                     children: [
                       Text(
                         _vehicleAssignment!.driverName ?? 'Unknown',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.green.shade100,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Text('AUTO-ASSIGNED', style: TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold)),
+                        child: const Text(
+                          'AUTO-ASSIGNED',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -634,20 +745,42 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.auto_awesome, color: Colors.deepPurple, size: 16),
+              const Icon(
+                Icons.auto_awesome,
+                color: Colors.deepPurple,
+                size: 16,
+              ),
               const SizedBox(width: 6),
               Text(
-                r.isGoogleMaps ? 'Google Maps Calculation' : 'Estimated Calculation',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.deepPurple),
+                r.isGoogleMaps
+                    ? 'Google Maps Calculation'
+                    : 'Estimated Calculation',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: Colors.deepPurple,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 10),
           Row(
             children: [
-              _aiStat(Icons.straighten, 'Distance', r.rawDistanceText ?? '${r.distanceKm.toStringAsFixed(1)} km'),
-              _aiStat(Icons.timer_outlined, 'Duration', r.rawDurationText ?? '${r.durationMin} min'),
-              _aiStat(Icons.local_gas_station_outlined, 'Est. Diesel', '${r.estimatedDieselLitres.toStringAsFixed(1)} L'),
+              _aiStat(
+                Icons.straighten,
+                'Distance',
+                r.rawDistanceText ?? '${r.distanceKm.toStringAsFixed(1)} km',
+              ),
+              _aiStat(
+                Icons.timer_outlined,
+                'Duration',
+                r.rawDurationText ?? '${r.durationMin} min',
+              ),
+              _aiStat(
+                Icons.local_gas_station_outlined,
+                'Est. Diesel',
+                '${r.estimatedDieselLitres.toStringAsFixed(1)} L',
+              ),
             ],
           ),
         ],
@@ -661,7 +794,10 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
         children: [
           Icon(icon, size: 18, color: Colors.deepPurple[300]),
           const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          ),
           Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[600])),
         ],
       ),
@@ -672,7 +808,12 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
 
   Widget _sectionHeader(String title) => Text(
     title,
-    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.teal, letterSpacing: 0.3),
+    style: const TextStyle(
+      fontSize: 14,
+      fontWeight: FontWeight.bold,
+      color: Colors.teal,
+      letterSpacing: 0.3,
+    ),
   );
 
   Widget _buildField({
@@ -696,7 +837,10 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
           labelText: label,
           hintText: hint,
           border: const OutlineInputBorder(),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
           prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
         ),
         validator: validator,

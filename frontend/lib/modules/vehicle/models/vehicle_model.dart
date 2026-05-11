@@ -1,5 +1,4 @@
 class VehicleModel {
-
   final int id;
   final String vehicleNumber;
   final String vehicleType;
@@ -25,7 +24,6 @@ class VehicleModel {
   });
 
   factory VehicleModel.fromJson(Map<String, dynamic> json) {
-
     return VehicleModel(
       id: json['id'] as int,
       vehicleNumber: json['vehicle_number'] as String? ?? '',
@@ -40,7 +38,6 @@ class VehicleModel {
   }
 
   Map<String, dynamic> toJson() {
-
     return {
       'vehicle_number': vehicleNumber,
       'vehicle_type': vehicleType,

@@ -7,7 +7,6 @@ import 'add_vehicle_screen.dart';
 import 'edit_vehicle_screen.dart';
 
 class VehicleScreen extends StatefulWidget {
-
   const VehicleScreen({super.key});
 
   @override
@@ -15,7 +14,6 @@ class VehicleScreen extends StatefulWidget {
 }
 
 class _VehicleScreenState extends State<VehicleScreen> {
-
   final VehicleService _vehicleService = VehicleService();
 
   late Future<List<VehicleModel>> _vehiclesFuture;
@@ -37,12 +35,9 @@ class _VehicleScreenState extends State<VehicleScreen> {
   // ─── Navigation ───────────────────────────────────────────────────────────
 
   Future<void> _openAddVehicle() async {
-
     final bool? result = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(
-        builder: (_) => const AddVehicleScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const AddVehicleScreen()),
     );
 
     if (result == true) {
@@ -51,12 +46,9 @@ class _VehicleScreenState extends State<VehicleScreen> {
   }
 
   Future<void> _openEditVehicle(VehicleModel vehicle) async {
-
     final bool? result = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(
-        builder: (_) => EditVehicleScreen(vehicle: vehicle),
-      ),
+      MaterialPageRoute(builder: (_) => EditVehicleScreen(vehicle: vehicle)),
     );
 
     if (result == true) {
@@ -67,13 +59,10 @@ class _VehicleScreenState extends State<VehicleScreen> {
   // ─── Delete ───────────────────────────────────────────────────────────────
 
   Future<void> _confirmDelete(VehicleModel vehicle) async {
-
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: const Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.red),
@@ -110,9 +99,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
   }
 
   Future<void> _deleteVehicle(VehicleModel vehicle) async {
-
     try {
-
       await _vehicleService.deleteVehicle(vehicle.id);
 
       if (mounted) {
@@ -125,9 +112,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
         );
         _loadVehicles();
       }
-
     } catch (e) {
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -143,11 +128,12 @@ class _VehicleScreenState extends State<VehicleScreen> {
   // ─── Error Parsing ────────────────────────────────────────────────────────
 
   String _parseError(Object e, String fallback) {
-
     final msg = e.toString();
 
     if (msg.contains('401')) return 'Unauthorized — please login again.';
-    if (msg.contains('403')) return 'Permission denied — admin access required.';
+    if (msg.contains('403')) {
+      return 'Permission denied — admin access required.';
+    }
     if (msg.contains('404')) return 'Vehicle not found.';
     if (msg.contains('SocketException') || msg.contains('Connection refused')) {
       return 'Cannot reach server — check your connection.';
@@ -160,9 +146,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
-
       appBar: AppBar(
         title: const Text('Vehicles'),
         actions: [
@@ -184,16 +168,12 @@ class _VehicleScreenState extends State<VehicleScreen> {
       ),
 
       body: FutureBuilder<List<VehicleModel>>(
-
         future: _vehiclesFuture,
 
         builder: (context, snapshot) {
-
           // ── Loading ──────────────────────────────────────────────────────
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
           // ── Error ────────────────────────────────────────────────────────
@@ -272,7 +252,6 @@ class _VehicleScreenState extends State<VehicleScreen> {
             padding: const EdgeInsets.only(top: 8, bottom: 100),
             itemCount: vehicles.length,
             itemBuilder: (context, index) {
-
               final vehicle = vehicles[index];
 
               return VehicleCard(

@@ -1,5 +1,4 @@
 class DriverModel {
-
   final int id;
   final int? vehicleId;
 
@@ -31,7 +30,6 @@ class DriverModel {
   });
 
   factory DriverModel.fromJson(Map<String, dynamic> json) {
-
     return DriverModel(
       id: json['id'] as int,
       vehicleId: json['vehicle_id'] as int?,
@@ -47,7 +45,6 @@ class DriverModel {
   }
 
   Map<String, dynamic> toJson() {
-
     return {
       if (vehicleId != null) 'vehicle_id': vehicleId,
       'full_name': fullName,

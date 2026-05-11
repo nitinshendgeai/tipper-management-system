@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.db.bootstrap import ensure_database_schemas, repair_existing_schema
 from app.db.seed import seed_data
 from app.db.session import Base, engine
 
@@ -38,7 +39,9 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup():
+    ensure_database_schemas(engine)
     Base.metadata.create_all(bind=engine)
+    repair_existing_schema(engine)
     seed_data()
 
 

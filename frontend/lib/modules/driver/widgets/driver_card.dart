@@ -5,7 +5,6 @@ import '../models/driver_model.dart';
 /// Reusable card displaying driver info with Edit and Delete actions.
 /// Follows the same pattern as VehicleCard.
 class DriverCard extends StatelessWidget {
-
   final DriverModel driver;
   final String? assignedVehicleNumber; // resolved from vehicleId externally
   final VoidCallback onEdit;
@@ -21,24 +20,19 @@ class DriverCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             // ── Header: avatar + name + actions ─────────────────────────
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-
                 Row(
                   children: [
                     Container(
@@ -81,7 +75,6 @@ class DriverCard extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-
                     InkWell(
                       onTap: onEdit,
                       borderRadius: BorderRadius.circular(8),
@@ -169,7 +162,6 @@ class DriverCard extends StatelessWidget {
     required String label,
     required String value,
   }) {
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

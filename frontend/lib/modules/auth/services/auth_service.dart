@@ -4,7 +4,6 @@ import '../../../core/constants/api_constants.dart';
 import '../../../core/storage/token_storage.dart';
 
 class AuthService {
-
   final Dio dio = Dio();
 
   /// Authenticates the user and persists the JWT token on success.
@@ -13,16 +12,11 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-
     try {
-
       final response = await dio.post(
         '${ApiConstants.baseUrl}/auth/login',
 
-        data: {
-          "email": email,
-          "password": password,
-        },
+        data: {"email": email, "password": password},
       );
 
       final token = response.data['access_token'] as String?;
@@ -32,9 +26,8 @@ class AuthService {
       }
 
       return token;
-
     } catch (e) {
-      print('[AuthService] Login error: $e');
+      // Intentionally swallow details here; the UI shows a generic auth error.
       return null;
     }
   }

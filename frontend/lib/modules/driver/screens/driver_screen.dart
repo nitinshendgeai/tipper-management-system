@@ -7,7 +7,6 @@ import 'add_driver_screen.dart';
 import 'edit_driver_screen.dart';
 
 class DriverScreen extends StatefulWidget {
-
   const DriverScreen({super.key});
 
   @override
@@ -15,7 +14,6 @@ class DriverScreen extends StatefulWidget {
 }
 
 class _DriverScreenState extends State<DriverScreen> {
-
   final DriverService _driverService = DriverService();
 
   late Future<List<DriverModel>> _driversFuture;
@@ -37,24 +35,18 @@ class _DriverScreenState extends State<DriverScreen> {
   // ─── Navigation ───────────────────────────────────────────────────────────
 
   Future<void> _openAddDriver() async {
-
     final bool? result = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(
-        builder: (_) => const AddDriverScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const AddDriverScreen()),
     );
 
     if (result == true) _loadDrivers();
   }
 
   Future<void> _openEditDriver(DriverModel driver) async {
-
     final bool? result = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(
-        builder: (_) => EditDriverScreen(driver: driver),
-      ),
+      MaterialPageRoute(builder: (_) => EditDriverScreen(driver: driver)),
     );
 
     if (result == true) _loadDrivers();
@@ -63,13 +55,10 @@ class _DriverScreenState extends State<DriverScreen> {
   // ─── Delete ───────────────────────────────────────────────────────────────
 
   Future<void> _confirmDelete(DriverModel driver) async {
-
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: const Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.red),
@@ -104,9 +93,7 @@ class _DriverScreenState extends State<DriverScreen> {
   }
 
   Future<void> _deleteDriver(DriverModel driver) async {
-
     try {
-
       await _driverService.deleteDriver(driver.id);
 
       if (mounted) {
@@ -119,9 +106,7 @@ class _DriverScreenState extends State<DriverScreen> {
         );
         _loadDrivers();
       }
-
     } catch (e) {
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -137,7 +122,6 @@ class _DriverScreenState extends State<DriverScreen> {
   // ─── Error helper ─────────────────────────────────────────────────────────
 
   String _parseError(Object e, String fallback) {
-
     final msg = e.toString();
 
     if (msg.contains('401')) return 'Unauthorized — please login again.';
@@ -145,8 +129,7 @@ class _DriverScreenState extends State<DriverScreen> {
       return 'Permission denied — admin access required.';
     }
     if (msg.contains('404')) return 'Driver not found.';
-    if (msg.contains('SocketException') ||
-        msg.contains('Connection refused')) {
+    if (msg.contains('SocketException') || msg.contains('Connection refused')) {
       return 'Cannot reach server — check your connection.';
     }
 
@@ -157,9 +140,7 @@ class _DriverScreenState extends State<DriverScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
-
       appBar: AppBar(
         title: const Text('Drivers'),
         actions: [
@@ -181,11 +162,9 @@ class _DriverScreenState extends State<DriverScreen> {
       ),
 
       body: FutureBuilder<List<DriverModel>>(
-
         future: _driversFuture,
 
         builder: (context, snapshot) {
-
           // ── Loading ──────────────────────────────────────────────────
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -267,7 +246,6 @@ class _DriverScreenState extends State<DriverScreen> {
             padding: const EdgeInsets.only(top: 8, bottom: 100),
             itemCount: drivers.length,
             itemBuilder: (context, index) {
-
               final driver = drivers[index];
 
               return DriverCard(

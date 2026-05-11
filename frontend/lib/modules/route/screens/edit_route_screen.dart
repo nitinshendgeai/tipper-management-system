@@ -4,7 +4,6 @@ import '../models/route_model.dart';
 import '../services/route_service.dart';
 
 class EditRouteScreen extends StatefulWidget {
-
   final RouteModel route;
 
   const EditRouteScreen({super.key, required this.route});
@@ -14,7 +13,6 @@ class EditRouteScreen extends StatefulWidget {
 }
 
 class _EditRouteScreenState extends State<EditRouteScreen> {
-
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final RouteService _routeService = RouteService();
 
@@ -28,19 +26,16 @@ class _EditRouteScreenState extends State<EditRouteScreen> {
 
   @override
   void initState() {
-
     super.initState();
 
     final r = widget.route;
 
-    _sourceController =
-        TextEditingController(text: r.sourceLocation);
-    _destinationController =
-        TextEditingController(text: r.destinationLocation);
-    _distanceController =
-        TextEditingController(text: r.distanceKm.toStringAsFixed(1));
-    _remarksController =
-        TextEditingController(text: r.remarks ?? '');
+    _sourceController = TextEditingController(text: r.sourceLocation);
+    _destinationController = TextEditingController(text: r.destinationLocation);
+    _distanceController = TextEditingController(
+      text: r.distanceKm.toStringAsFixed(1),
+    );
+    _remarksController = TextEditingController(text: r.remarks ?? '');
   }
 
   @override
@@ -55,13 +50,11 @@ class _EditRouteScreenState extends State<EditRouteScreen> {
   // ─── Update ───────────────────────────────────────────────────────────────
 
   Future<void> _updateRoute() async {
-
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-
       final payload = <String, dynamic>{
         'source_location': _sourceController.text.trim(),
         'destination_location': _destinationController.text.trim(),
@@ -84,9 +77,7 @@ class _EditRouteScreenState extends State<EditRouteScreen> {
         );
         Navigator.pop(context, true); // triggers list refresh
       }
-
     } catch (e) {
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -96,14 +87,12 @@ class _EditRouteScreenState extends State<EditRouteScreen> {
           ),
         );
       }
-
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
   String _parseError(Object e) {
-
     final msg = e.toString();
 
     if (msg.contains('401')) return 'Session expired — please login again.';
@@ -111,8 +100,7 @@ class _EditRouteScreenState extends State<EditRouteScreen> {
       return 'Permission denied — admin access required.';
     }
     if (msg.contains('404')) return 'Route not found.';
-    if (msg.contains('SocketException') ||
-        msg.contains('Connection refused')) {
+    if (msg.contains('SocketException') || msg.contains('Connection refused')) {
       return 'Cannot reach server — check your connection.';
     }
 
@@ -123,9 +111,7 @@ class _EditRouteScreenState extends State<EditRouteScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
-
       appBar: AppBar(
         title: Text(
           '${widget.route.sourceLocation} → ${widget.route.destinationLocation}',
@@ -134,19 +120,15 @@ class _EditRouteScreenState extends State<EditRouteScreen> {
       ),
 
       body: SingleChildScrollView(
-
         padding: const EdgeInsets.all(20),
 
         child: Form(
-
           key: _formKey,
 
           child: Column(
-
             crossAxisAlignment: CrossAxisAlignment.start,
 
             children: [
-
               // ── Section: Route Details ───────────────────────────────
               _sectionHeader('Route Details'),
               const SizedBox(height: 16),
@@ -156,10 +138,9 @@ class _EditRouteScreenState extends State<EditRouteScreen> {
                 label: 'Source Location *',
                 textCapitalization: TextCapitalization.words,
                 prefixIcon: Icons.location_on_outlined,
-                validator: (v) =>
-                    v == null || v.trim().isEmpty
-                        ? 'Source location is required'
-                        : null,
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'Source location is required'
+                    : null,
               ),
 
               // Direction indicator
@@ -167,13 +148,15 @@ class _EditRouteScreenState extends State<EditRouteScreen> {
                 padding: const EdgeInsets.only(left: 14, bottom: 12),
                 child: Row(
                   children: [
-                    Icon(Icons.arrow_downward,
-                        size: 18, color: Colors.teal[400]),
+                    Icon(
+                      Icons.arrow_downward,
+                      size: 18,
+                      color: Colors.teal[400],
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       'to',
-                      style: TextStyle(
-                          color: Colors.grey[600], fontSize: 13),
+                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
                     ),
                   ],
                 ),
@@ -281,7 +264,6 @@ class _EditRouteScreenState extends State<EditRouteScreen> {
   // ─── Helper Widgets ───────────────────────────────────────────────────────
 
   Widget _sectionHeader(String title) {
-
     return Text(
       title,
       style: const TextStyle(
@@ -303,7 +285,6 @@ class _EditRouteScreenState extends State<EditRouteScreen> {
     int maxLines = 1,
     String? Function(String?)? validator,
   }) {
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
@@ -315,8 +296,10 @@ class _EditRouteScreenState extends State<EditRouteScreen> {
           labelText: label,
           hintText: hint,
           border: const OutlineInputBorder(),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
           prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
         ),
         validator: validator,

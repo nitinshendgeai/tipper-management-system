@@ -7,7 +7,6 @@ import '../../driver/services/driver_service.dart';
 import '../services/allocation_service.dart';
 
 class CreateAssignmentScreen extends StatefulWidget {
-
   const CreateAssignmentScreen({super.key});
 
   @override
@@ -15,7 +14,6 @@ class CreateAssignmentScreen extends StatefulWidget {
 }
 
 class _CreateAssignmentScreenState extends State<CreateAssignmentScreen> {
-
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final AllocationService _service = AllocationService();
 
@@ -44,7 +42,10 @@ class _CreateAssignmentScreenState extends State<CreateAssignmentScreen> {
   }
 
   Future<void> _loadDropdowns() async {
-    setState(() { _loadingDropdowns = true; _dropdownError = null; });
+    setState(() {
+      _loadingDropdowns = true;
+      _dropdownError = null;
+    });
     try {
       final results = await Future.wait([
         VehicleService().getVehicles(),
@@ -64,7 +65,12 @@ class _CreateAssignmentScreenState extends State<CreateAssignmentScreen> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _dropdownError = 'Failed to load data. Tap retry.'; _loadingDropdowns = false; });
+      if (mounted) {
+        setState(() {
+          _dropdownError = 'Failed to load data. Tap retry.';
+          _loadingDropdowns = false;
+        });
+      }
     }
   }
 
@@ -93,7 +99,6 @@ class _CreateAssignmentScreenState extends State<CreateAssignmentScreen> {
         );
         Navigator.pop(context, true);
       }
-
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -111,8 +116,12 @@ class _CreateAssignmentScreenState extends State<CreateAssignmentScreen> {
 
   String _parseError(Object e) {
     final msg = e.toString();
-    if (msg.contains('409')) return 'Vehicle or driver already has an active assignment.';
-    if (msg.contains('403')) return 'Permission denied — supervisor access required.';
+    if (msg.contains('409')) {
+      return 'Vehicle or driver already has an active assignment.';
+    }
+    if (msg.contains('403')) {
+      return 'Permission denied — supervisor access required.';
+    }
     if (msg.contains('SocketException') || msg.contains('Connection refused')) {
       return 'Cannot reach server — check your connection.';
     }
@@ -126,8 +135,8 @@ class _CreateAssignmentScreenState extends State<CreateAssignmentScreen> {
       body: _loadingDropdowns
           ? const Center(child: CircularProgressIndicator())
           : _dropdownError != null
-              ? _buildError()
-              : _buildForm(),
+          ? _buildError()
+          : _buildForm(),
     );
   }
 
@@ -140,7 +149,11 @@ class _CreateAssignmentScreenState extends State<CreateAssignmentScreen> {
           const SizedBox(height: 12),
           Text(_dropdownError!, textAlign: TextAlign.center),
           const SizedBox(height: 20),
-          ElevatedButton.icon(onPressed: _loadDropdowns, icon: const Icon(Icons.refresh), label: const Text('Retry')),
+          ElevatedButton.icon(
+            onPressed: _loadDropdowns,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Retry'),
+          ),
         ],
       ),
     );
@@ -154,7 +167,6 @@ class _CreateAssignmentScreenState extends State<CreateAssignmentScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             // ── Info banner ────────────────────────────────────────────────
             Container(
               padding: const EdgeInsets.all(12),
@@ -183,21 +195,36 @@ class _CreateAssignmentScreenState extends State<CreateAssignmentScreen> {
             const SizedBox(height: 12),
 
             DropdownButtonFormField<int>(
-              value: _selectedVehicleId,
+              initialValue: _selectedVehicleId,
               decoration: const InputDecoration(
                 labelText: 'Vehicle *',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.fire_truck_outlined),
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
               ),
               items: _vehicles.isEmpty
-                  ? [const DropdownMenuItem(value: -1, child: Text('No available vehicles'))]
-                  : _vehicles.map((v) => DropdownMenuItem<int>(
-                        value: v.id,
-                        child: Text('${v.vehicleNumber} — ${v.vehicleType ?? ''}'),
-                      )).toList(),
+                  ? [
+                      const DropdownMenuItem(
+                        value: -1,
+                        child: Text('No available vehicles'),
+                      ),
+                    ]
+                  : _vehicles
+                        .map(
+                          (v) => DropdownMenuItem<int>(
+                            value: v.id,
+                            child: Text(
+                              '${v.vehicleNumber} — ${v.vehicleType}',
+                            ),
+                          ),
+                        )
+                        .toList(),
               onChanged: (val) => setState(() => _selectedVehicleId = val),
-              validator: (v) => (v == null || v == -1) ? 'Please select a vehicle' : null,
+              validator: (v) =>
+                  (v == null || v == -1) ? 'Please select a vehicle' : null,
             ),
 
             const SizedBox(height: 20),
@@ -205,21 +232,34 @@ class _CreateAssignmentScreenState extends State<CreateAssignmentScreen> {
             const SizedBox(height: 12),
 
             DropdownButtonFormField<int>(
-              value: _selectedDriverId,
+              initialValue: _selectedDriverId,
               decoration: const InputDecoration(
                 labelText: 'Driver *',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.person_outline),
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
               ),
               items: _drivers.isEmpty
-                  ? [const DropdownMenuItem(value: -1, child: Text('No available drivers'))]
-                  : _drivers.map((d) => DropdownMenuItem<int>(
-                        value: d.id,
-                        child: Text('${d.fullName}  •  ${d.mobileNumber}'),
-                      )).toList(),
+                  ? [
+                      const DropdownMenuItem(
+                        value: -1,
+                        child: Text('No available drivers'),
+                      ),
+                    ]
+                  : _drivers
+                        .map(
+                          (d) => DropdownMenuItem<int>(
+                            value: d.id,
+                            child: Text('${d.fullName}  •  ${d.mobileNumber}'),
+                          ),
+                        )
+                        .toList(),
               onChanged: (val) => setState(() => _selectedDriverId = val),
-              validator: (v) => (v == null || v == -1) ? 'Please select a driver' : null,
+              validator: (v) =>
+                  (v == null || v == -1) ? 'Please select a driver' : null,
             ),
 
             const SizedBox(height: 20),
@@ -245,12 +285,28 @@ class _CreateAssignmentScreenState extends State<CreateAssignmentScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.indigo,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   elevation: 2,
                 ),
                 child: _isSubmitting
-                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                    : const Text('ASSIGN DRIVER', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
+                      )
+                    : const Text(
+                        'ASSIGN DRIVER',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
               ),
             ),
 
@@ -263,6 +319,11 @@ class _CreateAssignmentScreenState extends State<CreateAssignmentScreen> {
 
   Widget _sectionHeader(String title) => Text(
     title,
-    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.indigo, letterSpacing: 0.3),
+    style: const TextStyle(
+      fontSize: 14,
+      fontWeight: FontWeight.bold,
+      color: Colors.indigo,
+      letterSpacing: 0.3,
+    ),
   );
 }

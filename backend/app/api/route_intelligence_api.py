@@ -12,7 +12,7 @@ Fallback behaviour when GOOGLE_MAPS_API_KEY is not set:
   (sufficient for demo/development; replace key in production).
 """
 
-import math
+import hashlib
 import httpx
 
 from fastapi import APIRouter, HTTPException
@@ -63,8 +63,9 @@ def _estimate_from_formula(origin: str, destination: str) -> RouteCalculationRes
     Returns a rough distance estimate. Not accurate — for development only.
     """
 
-    # Simple hash-based pseudo-distance for demo purposes
-    seed = abs(hash(origin + destination)) % 5000
+    # Deterministic pseudo-distance for demo/development fallback.
+    digest = hashlib.sha256(f"{origin}|{destination}".encode("utf-8")).hexdigest()
+    seed = int(digest[:8], 16) % 5000
     estimated_km = 50.0 + (seed / 100.0)   # 50 – 100 km range
 
     duration_min = int((estimated_km / 40.0) * 60)     # avg 40 km/h
@@ -116,6 +117,11 @@ async def calculate_route(data: RouteCalculationRequest):
             resp.raise_for_status()
             payload = resp.json()
 
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Google Maps returned HTTP {exc.response.status_code}"
+        )
     except httpx.RequestError as exc:
         raise HTTPException(
             status_code=502,
