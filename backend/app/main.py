@@ -20,6 +20,19 @@ from app.api.trip_expense_api import router as trip_expense_router
 
 from app.api.dashboard_api import router as dashboard_router
 
+from app.models.user_model import User
+from app.models.role_model import Role
+
+from app.models.vehicle_model import Vehicle
+from app.models.driver_model import Driver
+from app.models.route_model import Route
+
+from app.models.trip_model import Trip
+from app.models.trip_expense_model import TripExpense
+
+from app.models.driver_vehicle_assignment_model import DriverVehicleAssignment
+
+
 
 app = FastAPI(
     title="Tipper ERP API",
