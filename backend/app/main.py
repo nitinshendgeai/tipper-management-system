@@ -18,7 +18,7 @@ from app.api.trip_api import router as trip_router
 from app.api.trip_expense_api import router as trip_expense_router
 
 from app.api.dashboard_api import router as dashboard_router
-from tipper_management_system.backend.app.db.session import Base
+from app.db.session import Base, engine
 
 
 app = FastAPI(
