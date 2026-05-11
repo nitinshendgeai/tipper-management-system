@@ -1,4 +1,3 @@
-```python
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -113,4 +112,3 @@ app.include_router(
     prefix="/dashboard",
     tags=["Dashboard Analytics"]
 )
-
