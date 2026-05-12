@@ -52,7 +52,10 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup():
+    print("[startup] Startup event triggered")
+    print("[startup] Creating database schemas via Base.metadata.create_all()")
     Base.metadata.create_all(bind=engine)
+    print("[startup] Database schemas created — calling seed_data()")
     seed_data()
 
 
