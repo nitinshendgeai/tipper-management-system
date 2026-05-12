@@ -111,7 +111,7 @@ abstract final class AppTheme {
       ),
 
       // ── Cards ──────────────────────────────────────────────────────────────
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.surfaceCard,
         elevation: elevationCard,
         shadowColor: Colors.black12,
@@ -249,7 +249,7 @@ abstract final class AppTheme {
       ),
 
       // ── Dialog ─────────────────────────────────────────────────────────────
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         backgroundColor: AppColors.surfaceCard,
         elevation: elevationModal,
         shape: RoundedRectangleBorder(
@@ -268,7 +268,7 @@ abstract final class AppTheme {
       ),
 
       // ── Tab Bar ────────────────────────────────────────────────────────────
-      tabBarTheme: const TabBarTheme(
+      tabBarTheme: const TabBarThemeData(
         labelColor: AppColors.textOnPrimary,
         unselectedLabelColor: Color(0xFFBFDBFE),
         indicatorColor: AppColors.textOnPrimary,
