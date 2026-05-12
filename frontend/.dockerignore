@@ -1,0 +1,24 @@
+# Build artifacts
+build/
+.dart_tool/
+.pub-cache/
+.pub/
+
+# Platform-specific directories not needed for web builds
+android/
+ios/
+linux/
+macos/
+windows/
+
+# IDE and tooling
+.idea/
+.vscode/
+*.iml
+
+# Test coverage
+coverage/
+
+# Git
+.git/
+.gitignore
