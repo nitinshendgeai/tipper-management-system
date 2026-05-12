@@ -11,8 +11,9 @@ from sqlalchemy import (
     String,
     Float,
     DateTime,
-    ForeignKey
+    ForeignKey,
 )
+from sqlalchemy.dialects.postgresql import UUID
 
 from datetime import datetime
 
@@ -39,6 +40,14 @@ class TripExpense(Base):
     __table_args__ = {"schema": "operations"}
 
     id = Column(Integer, primary_key=True, index=True)
+
+    # ─── Multi-tenant ─────────────────────────────────────────────────────────
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("tenant.companies.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
 
     trip_id = Column(
         Integer,

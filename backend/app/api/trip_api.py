@@ -35,10 +35,10 @@ from app.schemas.trip_schema import (
     CancelTripRequest,
 )
 
-from app.api.role_checker import RoleChecker
+from app.api.dependencies import require_permission, get_current_tenant_user
+from app.core.permissions import Permission
+from app.db.tenant_queries import filter_by_company
 
-
-supervisor = RoleChecker([1, 2, 3])
 
 router = APIRouter()
 
@@ -125,15 +125,17 @@ def _build_list_item(trip: Trip, db: Session) -> TripListItem:
 @router.post(
     "/",
     response_model=TripResponse,
-    summary="Create a new trip — driver is auto-fetched from vehicle assignment (supervisor only)"
+    summary="Create a new trip — driver is auto-fetched from vehicle assignment (SUPERVISOR or above)"
 )
 def create_trip(
     data: TripCreate,
-    current_user=Depends(supervisor),
+    current_user=Depends(require_permission(Permission.CREATE_TRIPS)),
     db: Session = Depends(get_db)
 ):
-    # 1. Validate vehicle
-    vehicle = db.query(Vehicle).filter(
+    # 1. Validate vehicle (scoped to company)
+    vehicle = filter_by_company(
+        db.query(Vehicle), Vehicle
+    ).filter(
         Vehicle.id == data.vehicle_id,
         Vehicle.is_active == True
     ).first()
@@ -153,8 +155,10 @@ def create_trip(
             detail=f"Vehicle {vehicle.vehicle_number} is under MAINTENANCE"
         )
 
-    # 2. Auto-fetch driver from active assignment
-    assignment = db.query(DriverVehicleAssignment).filter(
+    # 2. Auto-fetch driver from active assignment (scoped to company)
+    assignment = filter_by_company(
+        db.query(DriverVehicleAssignment), DriverVehicleAssignment
+    ).filter(
         DriverVehicleAssignment.vehicle_id == data.vehicle_id,
         DriverVehicleAssignment.is_active == True
     ).first()
@@ -165,7 +169,9 @@ def create_trip(
             detail=f"Vehicle {vehicle.vehicle_number} has no active driver assignment. Assign a driver first."
         )
 
-    driver = db.query(Driver).filter(
+    driver = filter_by_company(
+        db.query(Driver), Driver
+    ).filter(
         Driver.id == assignment.driver_id,
         Driver.is_active == True
     ).first()
@@ -179,9 +185,11 @@ def create_trip(
             detail=f"Driver {driver.full_name} is already ON_TRIP"
         )
 
-    # 3. Validate optional route
+    # 3. Validate optional route (scoped to company)
     if data.route_id:
-        route = db.query(Route).filter(
+        route = filter_by_company(
+            db.query(Route), Route
+        ).filter(
             Route.id == data.route_id,
             Route.is_active == True
         ).first()
@@ -190,6 +198,7 @@ def create_trip(
 
     # 4. Create trip
     trip = Trip(
+        company_id=current_user.company_id,
         vehicle_id=data.vehicle_id,
         driver_id=driver.id,
         route_id=data.route_id,
@@ -223,9 +232,10 @@ def list_trips(
     status: str = Query(default=None, description="CREATED | STARTED | COMPLETED | CANCELLED"),
     vehicle_id: int = Query(default=None),
     driver_id: int = Query(default=None),
+    current_user=Depends(require_permission(Permission.VIEW_TRIPS)),
     db: Session = Depends(get_db)
 ):
-    query = db.query(Trip)
+    query = filter_by_company(db.query(Trip), Trip)
 
     if status:
         query = query.filter(Trip.trip_status == status.upper())
@@ -250,9 +260,12 @@ def list_trips(
 )
 def get_trip(
     trip_id: int,
+    current_user=Depends(require_permission(Permission.VIEW_TRIPS)),
     db: Session = Depends(get_db)
 ):
-    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    trip = filter_by_company(
+        db.query(Trip), Trip
+    ).filter(Trip.id == trip_id).first()
 
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
@@ -265,15 +278,17 @@ def get_trip(
 @router.put(
     "/{trip_id}/start",
     response_model=TripListItem,
-    summary="Start a trip — CREATED → STARTED (supervisor only)"
+    summary="Start a trip — CREATED → STARTED (SUPERVISOR or above)"
 )
 def start_trip(
     trip_id: int,
     data: StartTripRequest,
-    current_user=Depends(supervisor),
+    current_user=Depends(require_permission(Permission.MANAGE_TRIPS)),
     db: Session = Depends(get_db)
 ):
-    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    trip = filter_by_company(
+        db.query(Trip), Trip
+    ).filter(Trip.id == trip_id).first()
 
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
@@ -284,8 +299,8 @@ def start_trip(
             detail=f"Trip cannot be started — current status is '{trip.trip_status}'"
         )
 
-    vehicle = db.query(Vehicle).filter(Vehicle.id == trip.vehicle_id).first()
-    driver  = db.query(Driver).filter(Driver.id == trip.driver_id).first()
+    vehicle = filter_by_company(db.query(Vehicle), Vehicle).filter(Vehicle.id == trip.vehicle_id).first()
+    driver  = filter_by_company(db.query(Driver), Driver).filter(Driver.id == trip.driver_id).first()
 
     trip.trip_status = TripStatus.STARTED
     trip.start_time  = datetime.utcnow()
@@ -308,15 +323,17 @@ def start_trip(
 @router.put(
     "/{trip_id}/complete",
     response_model=TripListItem,
-    summary="Complete a trip — STARTED → COMPLETED (supervisor only)"
+    summary="Complete a trip — STARTED → COMPLETED (SUPERVISOR or above)"
 )
 def complete_trip(
     trip_id: int,
     data: CompleteTripRequest,
-    current_user=Depends(supervisor),
+    current_user=Depends(require_permission(Permission.MANAGE_TRIPS)),
     db: Session = Depends(get_db)
 ):
-    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    trip = filter_by_company(
+        db.query(Trip), Trip
+    ).filter(Trip.id == trip_id).first()
 
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
@@ -333,8 +350,8 @@ def complete_trip(
             detail=f"End KM ({data.end_km}) must be greater than Start KM ({trip.start_km})"
         )
 
-    vehicle = db.query(Vehicle).filter(Vehicle.id == trip.vehicle_id).first()
-    driver  = db.query(Driver).filter(Driver.id == trip.driver_id).first()
+    vehicle = filter_by_company(db.query(Vehicle), Vehicle).filter(Vehicle.id == trip.vehicle_id).first()
+    driver  = filter_by_company(db.query(Driver), Driver).filter(Driver.id == trip.driver_id).first()
 
     trip.trip_status    = TripStatus.COMPLETED
     trip.end_time       = datetime.utcnow()
@@ -352,7 +369,9 @@ def complete_trip(
 
     # Release vehicle — back to ASSIGNED if still has active assignment, else AVAILABLE
     if vehicle:
-        still_assigned = db.query(DriverVehicleAssignment).filter(
+        still_assigned = filter_by_company(
+            db.query(DriverVehicleAssignment), DriverVehicleAssignment
+        ).filter(
             DriverVehicleAssignment.vehicle_id == vehicle.id,
             DriverVehicleAssignment.is_active == True
         ).first()
@@ -374,15 +393,17 @@ def complete_trip(
 @router.put(
     "/{trip_id}/cancel",
     response_model=TripListItem,
-    summary="Cancel a trip — only CREATED trips can be cancelled (supervisor only)"
+    summary="Cancel a trip — only CREATED trips can be cancelled (SUPERVISOR or above)"
 )
 def cancel_trip(
     trip_id: int,
     data: CancelTripRequest,
-    current_user=Depends(supervisor),
+    current_user=Depends(require_permission(Permission.MANAGE_TRIPS)),
     db: Session = Depends(get_db)
 ):
-    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    trip = filter_by_company(
+        db.query(Trip), Trip
+    ).filter(Trip.id == trip_id).first()
 
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
@@ -393,8 +414,8 @@ def cancel_trip(
             detail=f"Only CREATED trips can be cancelled (current: {trip.trip_status})"
         )
 
-    vehicle = db.query(Vehicle).filter(Vehicle.id == trip.vehicle_id).first()
-    driver  = db.query(Driver).filter(Driver.id == trip.driver_id).first()
+    vehicle = filter_by_company(db.query(Vehicle), Vehicle).filter(Vehicle.id == trip.vehicle_id).first()
+    driver  = filter_by_company(db.query(Driver), Driver).filter(Driver.id == trip.driver_id).first()
 
     trip.trip_status         = TripStatus.CANCELLED
     trip.cancelled_at        = datetime.utcnow()
@@ -402,7 +423,9 @@ def cancel_trip(
 
     # Restore vehicle to ASSIGNED (assignment still active)
     if vehicle and vehicle.status != VehicleStatus.ON_TRIP:
-        still_assigned = db.query(DriverVehicleAssignment).filter(
+        still_assigned = filter_by_company(
+            db.query(DriverVehicleAssignment), DriverVehicleAssignment
+        ).filter(
             DriverVehicleAssignment.vehicle_id == vehicle.id,
             DriverVehicleAssignment.is_active == True
         ).first()

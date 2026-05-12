@@ -16,10 +16,10 @@ from app.schemas.route_schema import (
     RouteResponse
 )
 
-from app.api.role_checker import RoleChecker
+from app.api.dependencies import require_permission
+from app.core.permissions import Permission
+from app.db.tenant_queries import filter_by_company
 
-
-admin_manager = RoleChecker([1])
 
 router = APIRouter()
 
@@ -40,15 +40,16 @@ def get_db():
 @router.post(
     "/",
     response_model=RouteResponse,
-    summary="Create a new route (admin only)"
+    summary="Create a new route (MANAGER or above)"
 )
 def create_route(
     data: RouteCreate,
-    current_user=Depends(admin_manager),
+    current_user=Depends(require_permission(Permission.MANAGE_ROUTES)),
     db: Session = Depends(get_db)
 ):
 
     route = Route(
+        company_id=current_user.company_id,
         source_location=data.source_location,
         destination_location=data.destination_location,
         distance_km=data.distance_km,
@@ -73,10 +74,13 @@ def create_route(
     summary="List all active routes"
 )
 def list_routes(
+    current_user=Depends(require_permission(Permission.VIEW_ROUTES)),
     db: Session = Depends(get_db)
 ):
 
-    routes = db.query(Route).filter(Route.is_active == True).all()
+    routes = filter_by_company(
+        db.query(Route), Route
+    ).filter(Route.is_active == True).all()
 
     return routes
 
@@ -90,10 +94,13 @@ def list_routes(
 )
 def get_route(
     route_id: int,
+    current_user=Depends(require_permission(Permission.VIEW_ROUTES)),
     db: Session = Depends(get_db)
 ):
 
-    route = db.query(Route).filter(
+    route = filter_by_company(
+        db.query(Route), Route
+    ).filter(
         Route.id == route_id,
         Route.is_active == True
     ).first()
@@ -109,16 +116,18 @@ def get_route(
 @router.put(
     "/{route_id}",
     response_model=RouteResponse,
-    summary="Update a route (admin only)"
+    summary="Update a route (MANAGER or above)"
 )
 def update_route(
     route_id: int,
     data: RouteUpdate,
-    current_user=Depends(admin_manager),
+    current_user=Depends(require_permission(Permission.MANAGE_ROUTES)),
     db: Session = Depends(get_db)
 ):
 
-    route = db.query(Route).filter(
+    route = filter_by_company(
+        db.query(Route), Route
+    ).filter(
         Route.id == route_id,
         Route.is_active == True
     ).first()
@@ -141,15 +150,17 @@ def update_route(
 
 @router.delete(
     "/{route_id}",
-    summary="Soft-delete a route (admin only)"
+    summary="Soft-delete a route (MANAGER or above)"
 )
 def delete_route(
     route_id: int,
-    current_user=Depends(admin_manager),
+    current_user=Depends(require_permission(Permission.MANAGE_ROUTES)),
     db: Session = Depends(get_db)
 ):
 
-    route = db.query(Route).filter(
+    route = filter_by_company(
+        db.query(Route), Route
+    ).filter(
         Route.id == route_id,
         Route.is_active == True
     ).first()

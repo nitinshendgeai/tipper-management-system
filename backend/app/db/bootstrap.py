@@ -2,7 +2,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
 
-POSTGRES_SCHEMAS = ("auth", "master", "operations")
+POSTGRES_SCHEMAS = ("auth", "master", "operations", "tenant")
 
 
 def ensure_database_schemas(engine: Engine) -> None:

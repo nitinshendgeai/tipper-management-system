@@ -4,8 +4,11 @@ from sqlalchemy import (
     String,
     Boolean,
     DateTime,
-    Float
+    Float,
+    ForeignKey,
 )
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
 from datetime import datetime
 
@@ -18,6 +21,16 @@ class Route(Base):
     __table_args__ = {"schema": "master"}
 
     id = Column(Integer, primary_key=True, index=True)
+
+    # ─── Multi-tenant ─────────────────────────────────────────────────────────
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("tenant.companies.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+
+    company = relationship("Company", back_populates="routes")
 
     source_location = Column(
         String(150),

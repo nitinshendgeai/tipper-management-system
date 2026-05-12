@@ -3,8 +3,11 @@ from sqlalchemy import (
     Integer,
     String,
     Boolean,
-    DateTime
+    DateTime,
+    ForeignKey,
 )
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
 from datetime import datetime
 
@@ -26,6 +29,16 @@ class Vehicle(Base):
     __table_args__ = {"schema": "master"}
 
     id = Column(Integer, primary_key=True, index=True)
+
+    # ─── Multi-tenant ─────────────────────────────────────────────────────────
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("tenant.companies.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+
+    company = relationship("Company", back_populates="vehicles")
 
     vehicle_number = Column(
         String(20),

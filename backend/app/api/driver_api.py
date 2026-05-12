@@ -16,10 +16,10 @@ from app.schemas.driver_schema import (
     DriverResponse
 )
 
-from app.api.role_checker import RoleChecker
+from app.api.dependencies import require_permission
+from app.core.permissions import Permission
+from app.db.tenant_queries import filter_by_company
 
-
-admin_manager = RoleChecker([1])
 
 router = APIRouter()
 
@@ -40,15 +40,17 @@ def get_db():
 @router.post(
     "/",
     response_model=DriverResponse,
-    summary="Create a new driver (admin only)"
+    summary="Create a new driver (MANAGER or above)"
 )
 def create_driver(
     data: DriverCreate,
-    current_user=Depends(admin_manager),
+    current_user=Depends(require_permission(Permission.MANAGE_DRIVERS)),
     db: Session = Depends(get_db)
 ):
 
-    existing_driver = db.query(Driver).filter(
+    existing_driver = filter_by_company(
+        db.query(Driver), Driver
+    ).filter(
         Driver.license_number == data.license_number
     ).first()
 
@@ -60,6 +62,7 @@ def create_driver(
         )
 
     driver = Driver(
+        company_id=current_user.company_id,
         vehicle_id=data.vehicle_id,
         full_name=data.full_name,
         mobile_number=data.mobile_number,
@@ -85,10 +88,13 @@ def create_driver(
     summary="List all active drivers"
 )
 def list_drivers(
+    current_user=Depends(require_permission(Permission.VIEW_DRIVERS)),
     db: Session = Depends(get_db)
 ):
 
-    drivers = db.query(Driver).filter(Driver.is_active == True).all()
+    drivers = filter_by_company(
+        db.query(Driver), Driver
+    ).filter(Driver.is_active == True).all()
 
     return drivers
 
@@ -102,10 +108,13 @@ def list_drivers(
 )
 def get_driver(
     driver_id: int,
+    current_user=Depends(require_permission(Permission.VIEW_DRIVERS)),
     db: Session = Depends(get_db)
 ):
 
-    driver = db.query(Driver).filter(
+    driver = filter_by_company(
+        db.query(Driver), Driver
+    ).filter(
         Driver.id == driver_id,
         Driver.is_active == True
     ).first()
@@ -121,16 +130,18 @@ def get_driver(
 @router.put(
     "/{driver_id}",
     response_model=DriverResponse,
-    summary="Update a driver (admin only)"
+    summary="Update a driver (MANAGER or above)"
 )
 def update_driver(
     driver_id: int,
     data: DriverUpdate,
-    current_user=Depends(admin_manager),
+    current_user=Depends(require_permission(Permission.MANAGE_DRIVERS)),
     db: Session = Depends(get_db)
 ):
 
-    driver = db.query(Driver).filter(
+    driver = filter_by_company(
+        db.query(Driver), Driver
+    ).filter(
         Driver.id == driver_id,
         Driver.is_active == True
     ).first()
@@ -141,7 +152,9 @@ def update_driver(
     # Guard against duplicate license number when changing it
     if data.license_number and data.license_number != driver.license_number:
 
-        existing = db.query(Driver).filter(
+        existing = filter_by_company(
+            db.query(Driver), Driver
+        ).filter(
             Driver.license_number == data.license_number
         ).first()
 
@@ -166,15 +179,17 @@ def update_driver(
 
 @router.delete(
     "/{driver_id}",
-    summary="Soft-delete a driver (admin only)"
+    summary="Soft-delete a driver (MANAGER or above)"
 )
 def delete_driver(
     driver_id: int,
-    current_user=Depends(admin_manager),
+    current_user=Depends(require_permission(Permission.MANAGE_DRIVERS)),
     db: Session = Depends(get_db)
 ):
 
-    driver = db.query(Driver).filter(
+    driver = filter_by_company(
+        db.query(Driver), Driver
+    ).filter(
         Driver.id == driver_id,
         Driver.is_active == True
     ).first()

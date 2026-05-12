@@ -21,8 +21,9 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     Date,
-    ForeignKey
+    ForeignKey,
 )
+from sqlalchemy.dialects.postgresql import UUID
 
 from datetime import datetime, date
 
@@ -35,6 +36,14 @@ class DriverVehicleAssignment(Base):
     __table_args__ = {"schema": "master"}
 
     id = Column(Integer, primary_key=True, index=True)
+
+    # ─── Multi-tenant ─────────────────────────────────────────────────────────
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("tenant.companies.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
 
     vehicle_id = Column(
         Integer,

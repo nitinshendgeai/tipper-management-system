@@ -2,6 +2,9 @@ from app.db.bootstrap import ensure_database_schemas, repair_existing_schema
 from app.db.session import engine, Base
 
 from app.models import (
+    Company,
+    CompanySettings,
+    UserRole,
     Role,
     User,
     Vehicle,
