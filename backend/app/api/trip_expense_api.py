@@ -21,10 +21,10 @@ from app.schemas.trip_expense_schema import (
     TripExpenseSummary,
 )
 
-from app.api.role_checker import RoleChecker
+from app.api.dependencies import require_permission
+from app.core.permissions import Permission
+from app.db.tenant_queries import filter_by_company
 
-
-supervisor = RoleChecker([1, 2, 3])
 
 router = APIRouter()
 
@@ -65,10 +65,12 @@ def _recompute_trip_expense(trip_id: int, db: Session) -> float:
 def add_expense(
     trip_id: int,
     data: TripExpenseCreate,
-    current_user=Depends(supervisor),
+    current_user=Depends(require_permission(Permission.MANAGE_EXPENSES)),
     db: Session = Depends(get_db)
 ):
-    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    trip = filter_by_company(
+        db.query(Trip), Trip
+    ).filter(Trip.id == trip_id).first()
 
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
@@ -80,6 +82,7 @@ def add_expense(
         )
 
     expense = TripExpense(
+        company_id=current_user.company_id,
         trip_id=trip_id,
         expense_type=data.expense_type,
         amount=data.amount,
@@ -107,9 +110,12 @@ def add_expense(
 )
 def list_expenses(
     trip_id: int,
+    current_user=Depends(require_permission(Permission.VIEW_TRIPS)),
     db: Session = Depends(get_db)
 ):
-    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    trip = filter_by_company(
+        db.query(Trip), Trip
+    ).filter(Trip.id == trip_id).first()
 
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
@@ -146,10 +152,12 @@ def list_expenses(
 def delete_expense(
     trip_id: int,
     expense_id: int,
-    current_user=Depends(supervisor),
+    current_user=Depends(require_permission(Permission.MANAGE_EXPENSES)),
     db: Session = Depends(get_db)
 ):
-    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    trip = filter_by_company(
+        db.query(Trip), Trip
+    ).filter(Trip.id == trip_id).first()
 
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")

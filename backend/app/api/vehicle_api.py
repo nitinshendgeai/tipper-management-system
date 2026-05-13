@@ -16,10 +16,10 @@ from app.schemas.vehicle_schema import (
     VehicleResponse
 )
 
-from app.api.role_checker import RoleChecker
+from app.api.dependencies import get_current_tenant_user, require_permission
+from app.core.permissions import Permission
+from app.db.tenant_queries import filter_by_company
 
-
-admin_manager = RoleChecker([1])
 
 router = APIRouter()
 
@@ -41,11 +41,13 @@ def get_db():
 )
 def create_vehicle(
     data: VehicleCreate,
-    current_user=Depends(admin_manager),
+    current_user=Depends(require_permission(Permission.MANAGE_VEHICLES)),
     db: Session = Depends(get_db)
 ):
 
-    existing_vehicle = db.query(Vehicle).filter(
+    existing_vehicle = filter_by_company(
+        db.query(Vehicle), Vehicle
+    ).filter(
         Vehicle.vehicle_number == data.vehicle_number
     ).first()
 
@@ -57,6 +59,7 @@ def create_vehicle(
         )
 
     vehicle = Vehicle(
+        company_id=current_user.company_id,
         vehicle_number=data.vehicle_number,
         vehicle_type=data.vehicle_type,
         capacity_ton=data.capacity_ton,
@@ -78,10 +81,13 @@ def create_vehicle(
     response_model=list[VehicleResponse]
 )
 def list_vehicles(
+    current_user=Depends(require_permission(Permission.VIEW_VEHICLES)),
     db: Session = Depends(get_db)
 ):
 
-    vehicles = db.query(Vehicle).filter(Vehicle.is_active == True).all()
+    vehicles = filter_by_company(
+        db.query(Vehicle), Vehicle
+    ).filter(Vehicle.is_active == True).all()
 
     return vehicles
 
@@ -92,10 +98,13 @@ def list_vehicles(
 )
 def get_vehicle(
     vehicle_id: int,
+    current_user=Depends(require_permission(Permission.VIEW_VEHICLES)),
     db: Session = Depends(get_db)
 ):
 
-    vehicle = db.query(Vehicle).filter(
+    vehicle = filter_by_company(
+        db.query(Vehicle), Vehicle
+    ).filter(
         Vehicle.id == vehicle_id,
         Vehicle.is_active == True
     ).first()
@@ -113,11 +122,13 @@ def get_vehicle(
 def update_vehicle(
     vehicle_id: int,
     data: VehicleUpdate,
-    current_user=Depends(admin_manager),
+    current_user=Depends(require_permission(Permission.MANAGE_VEHICLES)),
     db: Session = Depends(get_db)
 ):
 
-    vehicle = db.query(Vehicle).filter(
+    vehicle = filter_by_company(
+        db.query(Vehicle), Vehicle
+    ).filter(
         Vehicle.id == vehicle_id,
         Vehicle.is_active == True
     ).first()
@@ -128,7 +139,9 @@ def update_vehicle(
     # Check for duplicate vehicle_number if being changed
     if data.vehicle_number and data.vehicle_number != vehicle.vehicle_number:
 
-        existing = db.query(Vehicle).filter(
+        existing = filter_by_company(
+            db.query(Vehicle), Vehicle
+        ).filter(
             Vehicle.vehicle_number == data.vehicle_number
         ).first()
 
@@ -154,11 +167,13 @@ def update_vehicle(
 )
 def delete_vehicle(
     vehicle_id: int,
-    current_user=Depends(admin_manager),
+    current_user=Depends(require_permission(Permission.MANAGE_VEHICLES)),
     db: Session = Depends(get_db)
 ):
 
-    vehicle = db.query(Vehicle).filter(
+    vehicle = filter_by_company(
+        db.query(Vehicle), Vehicle
+    ).filter(
         Vehicle.id == vehicle_id,
         Vehicle.is_active == True
     ).first()

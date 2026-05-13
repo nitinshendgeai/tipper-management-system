@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
@@ -5,6 +7,43 @@ from app.models.role import Role
 from app.models.user import User
 
 from app.core.security import hash_password
+
+
+# ─── Multi-tenant default roles ───────────────────────────────────────────────
+
+
+def create_default_roles(db: Session, company_id: UUID) -> None:
+    """
+    Create the four default UserRole rows for a newly registered company.
+
+    Called during company registration (company_api.py) and can be called
+    independently for backfill purposes.
+    """
+    from app.models.company import UserRole
+    from app.core.permissions import ROLE_PERMISSIONS
+
+    for role_name, permissions in ROLE_PERMISSIONS.items():
+        existing = (
+            db.query(UserRole)
+            .filter(
+                UserRole.company_id == company_id,
+                UserRole.role_name == role_name,
+            )
+            .first()
+        )
+        if not existing:
+            role = UserRole(
+                company_id=company_id,
+                role_name=role_name,
+                permissions=[p.value for p in permissions],
+            )
+            db.add(role)
+
+    # Flush so callers can reference the new role IDs immediately
+    db.flush()
+
+
+# ─── Single-tenant bootstrap seed ─────────────────────────────────────────────
 
 
 def seed_data():

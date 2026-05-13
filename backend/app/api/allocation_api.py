@@ -30,10 +30,10 @@ from app.schemas.assignment_schema import (
     VehicleAssignmentStatus,
 )
 
-from app.api.role_checker import RoleChecker
+from app.api.dependencies import require_permission
+from app.core.permissions import Permission
+from app.db.tenant_queries import filter_by_company
 
-
-supervisor = RoleChecker([1, 2, 3])   # Admin, Manager, Dispatcher
 
 router = APIRouter()
 
@@ -79,15 +79,17 @@ def _enrich(assignment: DriverVehicleAssignment, db: Session) -> AssignmentDetai
 @router.post(
     "/",
     response_model=AssignmentDetail,
-    summary="Assign a driver to a vehicle for a shift (supervisor only)"
+    summary="Assign a driver to a vehicle for a shift (SUPERVISOR or above)"
 )
 def create_assignment(
     data: AssignmentCreate,
-    current_user=Depends(supervisor),
+    current_user=Depends(require_permission(Permission.MANAGE_TRIPS)),
     db: Session = Depends(get_db)
 ):
-    # Validate vehicle
-    vehicle = db.query(Vehicle).filter(
+    # Validate vehicle (scoped to company)
+    vehicle = filter_by_company(
+        db.query(Vehicle), Vehicle
+    ).filter(
         Vehicle.id == data.vehicle_id,
         Vehicle.is_active == True
     ).first()
@@ -101,8 +103,10 @@ def create_assignment(
             detail=f"Vehicle {vehicle.vehicle_number} is currently ON_TRIP — cannot reassign"
         )
 
-    # Validate driver
-    driver = db.query(Driver).filter(
+    # Validate driver (scoped to company)
+    driver = filter_by_company(
+        db.query(Driver), Driver
+    ).filter(
         Driver.id == data.driver_id,
         Driver.is_active == True
     ).first()
@@ -110,8 +114,10 @@ def create_assignment(
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
 
-    # One active assignment per vehicle
-    existing_vehicle_assignment = db.query(DriverVehicleAssignment).filter(
+    # One active assignment per vehicle (scoped to company)
+    existing_vehicle_assignment = filter_by_company(
+        db.query(DriverVehicleAssignment), DriverVehicleAssignment
+    ).filter(
         DriverVehicleAssignment.vehicle_id == data.vehicle_id,
         DriverVehicleAssignment.is_active == True
     ).first()
@@ -122,8 +128,10 @@ def create_assignment(
             detail=f"Vehicle {vehicle.vehicle_number} already has an active assignment (Assignment #{existing_vehicle_assignment.id})"
         )
 
-    # One active assignment per driver
-    existing_driver_assignment = db.query(DriverVehicleAssignment).filter(
+    # One active assignment per driver (scoped to company)
+    existing_driver_assignment = filter_by_company(
+        db.query(DriverVehicleAssignment), DriverVehicleAssignment
+    ).filter(
         DriverVehicleAssignment.driver_id == data.driver_id,
         DriverVehicleAssignment.is_active == True
     ).first()
@@ -136,6 +144,7 @@ def create_assignment(
 
     # Create assignment
     assignment = DriverVehicleAssignment(
+        company_id=current_user.company_id,
         vehicle_id=data.vehicle_id,
         driver_id=data.driver_id,
         assigned_by=current_user.id,
@@ -165,10 +174,11 @@ def create_assignment(
     summary="List all currently active shift assignments"
 )
 def list_active_assignments(
+    current_user=Depends(require_permission(Permission.VIEW_TRIPS)),
     db: Session = Depends(get_db)
 ):
     assignments = (
-        db.query(DriverVehicleAssignment)
+        filter_by_company(db.query(DriverVehicleAssignment), DriverVehicleAssignment)
         .filter(DriverVehicleAssignment.is_active == True)
         .order_by(DriverVehicleAssignment.assigned_at.desc())
         .all()
@@ -185,10 +195,11 @@ def list_active_assignments(
     summary="List all assignments (active + historical)"
 )
 def list_all_assignments(
+    current_user=Depends(require_permission(Permission.VIEW_TRIPS)),
     db: Session = Depends(get_db)
 ):
     assignments = (
-        db.query(DriverVehicleAssignment)
+        filter_by_company(db.query(DriverVehicleAssignment), DriverVehicleAssignment)
         .order_by(DriverVehicleAssignment.assigned_at.desc())
         .all()
     )
@@ -205,9 +216,12 @@ def list_all_assignments(
 )
 def get_assignment(
     assignment_id: int,
+    current_user=Depends(require_permission(Permission.VIEW_TRIPS)),
     db: Session = Depends(get_db)
 ):
-    assignment = db.query(DriverVehicleAssignment).filter(
+    assignment = filter_by_company(
+        db.query(DriverVehicleAssignment), DriverVehicleAssignment
+    ).filter(
         DriverVehicleAssignment.id == assignment_id
     ).first()
 
@@ -226,9 +240,12 @@ def get_assignment(
 )
 def get_vehicle_assignment_status(
     vehicle_id: int,
+    current_user=Depends(require_permission(Permission.VIEW_TRIPS)),
     db: Session = Depends(get_db)
 ):
-    vehicle = db.query(Vehicle).filter(
+    vehicle = filter_by_company(
+        db.query(Vehicle), Vehicle
+    ).filter(
         Vehicle.id == vehicle_id,
         Vehicle.is_active == True
     ).first()
@@ -236,7 +253,9 @@ def get_vehicle_assignment_status(
     if not vehicle:
         raise HTTPException(status_code=404, detail="Vehicle not found")
 
-    assignment = db.query(DriverVehicleAssignment).filter(
+    assignment = filter_by_company(
+        db.query(DriverVehicleAssignment), DriverVehicleAssignment
+    ).filter(
         DriverVehicleAssignment.vehicle_id == vehicle_id,
         DriverVehicleAssignment.is_active == True
     ).first()
@@ -249,7 +268,9 @@ def get_vehicle_assignment_status(
             is_assigned=False,
         )
 
-    driver = db.query(Driver).filter(Driver.id == assignment.driver_id).first()
+    driver = filter_by_company(
+        db.query(Driver), Driver
+    ).filter(Driver.id == assignment.driver_id).first()
 
     return VehicleAssignmentStatus(
         vehicle_id=vehicle.id,
@@ -270,15 +291,17 @@ def get_vehicle_assignment_status(
 @router.put(
     "/{assignment_id}/release",
     response_model=AssignmentDetail,
-    summary="End a shift — release driver from vehicle (supervisor only)"
+    summary="End a shift — release driver from vehicle (SUPERVISOR or above)"
 )
 def release_assignment(
     assignment_id: int,
     data: AssignmentRelease,
-    current_user=Depends(supervisor),
+    current_user=Depends(require_permission(Permission.MANAGE_TRIPS)),
     db: Session = Depends(get_db)
 ):
-    assignment = db.query(DriverVehicleAssignment).filter(
+    assignment = filter_by_company(
+        db.query(DriverVehicleAssignment), DriverVehicleAssignment
+    ).filter(
         DriverVehicleAssignment.id == assignment_id,
         DriverVehicleAssignment.is_active == True
     ).first()
@@ -289,8 +312,8 @@ def release_assignment(
             detail="Active assignment not found"
         )
 
-    vehicle = db.query(Vehicle).filter(Vehicle.id == assignment.vehicle_id).first()
-    driver  = db.query(Driver).filter(Driver.id == assignment.driver_id).first()
+    vehicle = filter_by_company(db.query(Vehicle), Vehicle).filter(Vehicle.id == assignment.vehicle_id).first()
+    driver  = filter_by_company(db.query(Driver), Driver).filter(Driver.id == assignment.driver_id).first()
 
     if vehicle and vehicle.status == VehicleStatus.ON_TRIP:
         raise HTTPException(

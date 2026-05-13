@@ -7,6 +7,7 @@ from app.db.session import Base, engine
 
 from app.api.auth_api import router as auth_router
 from app.api.admin_api import router as admin_router
+from app.api.company_api import router as company_router
 
 from app.api.vehicle_api import router as vehicle_router
 from app.api.driver_api import router as driver_router
@@ -20,6 +21,7 @@ from app.api.trip_expense_api import router as trip_expense_router
 
 from app.api.dashboard_api import router as dashboard_router
 
+from app.models.company import Company, CompanySettings, UserRole
 from app.models.user import User
 from app.models.role import Role
 
@@ -57,6 +59,15 @@ def startup():
     Base.metadata.create_all(bind=engine)
     print("[startup] Database schemas created — calling seed_data()")
     seed_data()
+
+
+# ─── Company Registration (public) ───────────────────────────────────────────
+
+app.include_router(
+    company_router,
+    prefix="/companies",
+    tags=["Company Management"]
+)
 
 
 # ─── Authentication ───────────────────────────────────────────────────────────

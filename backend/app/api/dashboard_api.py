@@ -12,6 +12,9 @@ from app.models.trip import Trip, TripStatus
 from app.models.trip_expense import TripExpense
 
 from app.schemas.dashboard_schema import DashboardStats
+from app.api.dependencies import require_permission
+from app.core.permissions import Permission
+from app.db.tenant_queries import filter_by_company
 
 
 router = APIRouter()
@@ -31,54 +34,55 @@ def get_db():
     summary="Operational fleet analytics dashboard",
 )
 def get_dashboard_stats(
+    current_user=Depends(require_permission(Permission.VIEW_DASHBOARD)),
     db: Session = Depends(get_db),
 ):
-    # ── Vehicle counts ─────────────────────────────────────────────────────────
+    # ── Vehicle counts (scoped to company) ────────────────────────────────────
 
-    total_vehicles = db.query(func.count(Vehicle.id)).filter(Vehicle.is_active == True).scalar() or 0
+    total_vehicles = filter_by_company(db.query(func.count(Vehicle.id)), Vehicle).filter(Vehicle.is_active == True).scalar() or 0
 
-    vehicles_available   = db.query(func.count(Vehicle.id)).filter(Vehicle.is_active == True, Vehicle.status == VehicleStatus.AVAILABLE).scalar() or 0
-    vehicles_assigned    = db.query(func.count(Vehicle.id)).filter(Vehicle.is_active == True, Vehicle.status == VehicleStatus.ASSIGNED).scalar() or 0
-    vehicles_on_trip     = db.query(func.count(Vehicle.id)).filter(Vehicle.is_active == True, Vehicle.status == VehicleStatus.ON_TRIP).scalar() or 0
-    vehicles_maintenance = db.query(func.count(Vehicle.id)).filter(Vehicle.is_active == True, Vehicle.status == VehicleStatus.MAINTENANCE).scalar() or 0
+    vehicles_available   = filter_by_company(db.query(func.count(Vehicle.id)), Vehicle).filter(Vehicle.is_active == True, Vehicle.status == VehicleStatus.AVAILABLE).scalar() or 0
+    vehicles_assigned    = filter_by_company(db.query(func.count(Vehicle.id)), Vehicle).filter(Vehicle.is_active == True, Vehicle.status == VehicleStatus.ASSIGNED).scalar() or 0
+    vehicles_on_trip     = filter_by_company(db.query(func.count(Vehicle.id)), Vehicle).filter(Vehicle.is_active == True, Vehicle.status == VehicleStatus.ON_TRIP).scalar() or 0
+    vehicles_maintenance = filter_by_company(db.query(func.count(Vehicle.id)), Vehicle).filter(Vehicle.is_active == True, Vehicle.status == VehicleStatus.MAINTENANCE).scalar() or 0
 
-    # ── Driver counts ──────────────────────────────────────────────────────────
+    # ── Driver counts (scoped to company) ─────────────────────────────────────
 
-    total_drivers = db.query(func.count(Driver.id)).filter(Driver.is_active == True).scalar() or 0
+    total_drivers = filter_by_company(db.query(func.count(Driver.id)), Driver).filter(Driver.is_active == True).scalar() or 0
 
-    drivers_available = db.query(func.count(Driver.id)).filter(Driver.is_active == True, Driver.status == DriverStatus.AVAILABLE).scalar() or 0
-    drivers_on_trip   = db.query(func.count(Driver.id)).filter(Driver.is_active == True, Driver.status == DriverStatus.ON_TRIP).scalar() or 0
-    drivers_off_duty  = db.query(func.count(Driver.id)).filter(Driver.is_active == True, Driver.status == DriverStatus.OFF_DUTY).scalar() or 0
+    drivers_available = filter_by_company(db.query(func.count(Driver.id)), Driver).filter(Driver.is_active == True, Driver.status == DriverStatus.AVAILABLE).scalar() or 0
+    drivers_on_trip   = filter_by_company(db.query(func.count(Driver.id)), Driver).filter(Driver.is_active == True, Driver.status == DriverStatus.ON_TRIP).scalar() or 0
+    drivers_off_duty  = filter_by_company(db.query(func.count(Driver.id)), Driver).filter(Driver.is_active == True, Driver.status == DriverStatus.OFF_DUTY).scalar() or 0
 
-    # ── Route count ────────────────────────────────────────────────────────────
+    # ── Route count (scoped to company) ───────────────────────────────────────
 
-    total_routes = db.query(func.count(Route.id)).filter(Route.is_active == True).scalar() or 0
+    total_routes = filter_by_company(db.query(func.count(Route.id)), Route).filter(Route.is_active == True).scalar() or 0
 
-    # ── Trip lifecycle counts ──────────────────────────────────────────────────
+    # ── Trip lifecycle counts (scoped to company) ──────────────────────────────
 
-    trips_total     = db.query(func.count(Trip.id)).scalar() or 0
-    trips_created   = db.query(func.count(Trip.id)).filter(Trip.trip_status == TripStatus.CREATED).scalar() or 0
-    trips_active    = db.query(func.count(Trip.id)).filter(Trip.trip_status == TripStatus.STARTED).scalar() or 0
-    trips_completed = db.query(func.count(Trip.id)).filter(Trip.trip_status == TripStatus.COMPLETED).scalar() or 0
-    trips_cancelled = db.query(func.count(Trip.id)).filter(Trip.trip_status == TripStatus.CANCELLED).scalar() or 0
+    trips_total     = filter_by_company(db.query(func.count(Trip.id)), Trip).scalar() or 0
+    trips_created   = filter_by_company(db.query(func.count(Trip.id)), Trip).filter(Trip.trip_status == TripStatus.CREATED).scalar() or 0
+    trips_active    = filter_by_company(db.query(func.count(Trip.id)), Trip).filter(Trip.trip_status == TripStatus.STARTED).scalar() or 0
+    trips_completed = filter_by_company(db.query(func.count(Trip.id)), Trip).filter(Trip.trip_status == TripStatus.COMPLETED).scalar() or 0
+    trips_cancelled = filter_by_company(db.query(func.count(Trip.id)), Trip).filter(Trip.trip_status == TripStatus.CANCELLED).scalar() or 0
 
-    # ── Financial analytics (completed trips) ──────────────────────────────────
+    # ── Financial analytics (completed trips, scoped to company) ──────────────
 
     total_revenue = float(
-        db.query(func.coalesce(func.sum(Trip.revenue_amount), 0.0))
+        filter_by_company(db.query(func.coalesce(func.sum(Trip.revenue_amount), 0.0)), Trip)
         .filter(Trip.trip_status == TripStatus.COMPLETED)
         .scalar() or 0.0
     )
 
     total_diesel_used = float(
-        db.query(func.coalesce(func.sum(Trip.diesel_used), 0.0))
+        filter_by_company(db.query(func.coalesce(func.sum(Trip.diesel_used), 0.0)), Trip)
         .filter(Trip.trip_status == TripStatus.COMPLETED)
         .scalar() or 0.0
     )
 
-    # Sum from trip_expenses table (all logged individual expenses)
+    # Sum from trip_expenses table (scoped to company)
     total_trip_expenses = float(
-        db.query(func.coalesce(func.sum(TripExpense.amount), 0.0))
+        filter_by_company(db.query(func.coalesce(func.sum(TripExpense.amount), 0.0)), TripExpense)
         .scalar() or 0.0
     )
 
