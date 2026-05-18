@@ -1,8 +1,8 @@
 # Multi-Tenant Plan — Tipper Management ERP
 
-**Version:** 2.0.0  
-**Last Updated:** 2026-05-17  
-**Phase:** System Stabilization  
+**Version:** 2.1.0  
+**Last Updated:** 2026-05-18  
+**Phase:** System Stabilization — Phase 3 Complete  
 
 ---
 
@@ -35,8 +35,15 @@ The platform transitioned from single-tenant to multi-tenant SaaS via Alembic mi
 - Permissions are defined in `app/core/permissions.py` as a Python enum
 
 ### JWT Claims
-- JWT includes `company_id` (UUID string) and `role_name`
+- JWT includes `sub` (email), `user_id`, `company_id` (UUID string), `role_id`, and `role_name`
+- `user_id` added in Phase 3 for audit trail support
 - Token is verified and tenant context is set on every protected request
+
+### Frontend Tenant Isolation (Phase 3)
+- All frontend service GET calls now include `Authorization: Bearer <token>` header
+- JWT payload is decoded after login to extract `role_name`, persisted in secure storage
+- Role-based navigation drawer hides menus based on role (DRIVER / SUPERVISOR / MANAGER / SUPER_ADMIN)
+- Logout clears both token and role from secure storage
 
 ---
 
@@ -110,11 +117,14 @@ tenant.companies (one per customer)
 
 ## Security Checklist for Multi-Tenancy
 
-- [x] JWT carries `company_id` claim
-- [x] All protected endpoints use `get_current_tenant_user` 
-- [x] `filter_by_company()` applied to all data queries
+- [x] JWT carries `company_id`, `user_id`, `role_name` claims
+- [x] All protected endpoints use `get_current_tenant_user`
+- [x] `filter_by_company()` applied to all data queries (including enrichment helpers)
 - [x] Cascade deletes configured on FK relationships
-- [ ] Login does not filter by company_id (GAP-001)
-- [ ] `company_id` is nullable — no DB enforcement (GAP-003)
-- [ ] Global unique constraints allow cross-tenant collisions (GAP-004)
-- [ ] No subscription limit enforcement (GAP-005)
+- [x] All frontend GET requests include Bearer auth token
+- [x] Role-based navigation drawer hides menus by role
+- [x] Role persisted in secure storage after login
+- [ ] Login does not filter by company_id (GAP-001) — Phase 4
+- [ ] `company_id` is nullable — no DB enforcement (GAP-003) — Phase 4
+- [ ] Global unique constraints allow cross-tenant collisions (GAP-004) — Phase 4
+- [ ] No subscription limit enforcement (GAP-005) — Phase 5

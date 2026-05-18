@@ -1,8 +1,8 @@
 # Test Checklist — Tipper Management ERP
 
-**Version:** 2.0.0  
-**Last Updated:** 2026-05-17  
-**Phase:** System Stabilization  
+**Version:** 2.1.0  
+**Last Updated:** 2026-05-18  
+**Phase:** System Stabilization — Phase 3 RBAC + Multi-Tenant  
 
 ---
 
@@ -200,3 +200,45 @@ Mark each item: ✅ Pass | ❌ Fail | ⏭️ Skip | 🔄 Retest
 | P2-03 | `/auth/me` — tenant isolation verified | Only returns user from correct company | |
 | P2-04 | `get_db()` usage consistent | trip_api, dashboard_api use dependency injection | |
 | P2-05 | `role_id` lookup dynamic, not hardcoded | Works even if Admin role has id != 1 | |
+
+---
+
+## 15. Phase 3 Regression Tests (RBAC + Multi-Tenant Hardening)
+
+### Backend — Tenant Query Scoping
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P3-01 | `GET /trips/` with enrichment — Company A token | Returns only Company A vehicle/driver/route names | |
+| P3-02 | `GET /trips/{id}` — enriched vehicle/driver/route names | All resolved from correct company | |
+| P3-03 | `GET /trips/{trip_id}/expenses` — Company A token | Returns only Company A expenses | |
+| P3-04 | `POST /trips/{trip_id}/expenses` — add expense | trip.trip_expense recomputed, scoped to company | |
+| P3-05 | `DELETE /trips/{trip_id}/expenses/{id}` — delete expense | Expense deleted, total recomputed correctly | |
+| P3-06 | `GET /allocations/` with enriched response | Vehicle/driver names from correct company | |
+| P3-07 | `GET /allocations/active` | Only active assignments from caller's company | |
+| P3-08 | `user_id` included in JWT payload | `/auth/me` response includes user_id | |
+
+### Frontend — Auth Token on GET Requests
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P3-09 | Open Vehicles screen (MANAGER login) | Loads vehicle list — no 401 error | |
+| P3-10 | Open Drivers screen (MANAGER login) | Loads driver list — no 401 error | |
+| P3-11 | Open Routes screen (MANAGER login) | Loads route list — no 401 error | |
+| P3-12 | Open Trips screen (any login) | Loads trip list — no 401 error | |
+| P3-13 | Open Trip detail | Loads single trip — no 401 error | |
+| P3-14 | Open Allocation screen (SUPERVISOR+ login) | Loads assignments — no 401 error | |
+| P3-15 | Dashboard stats load | Stats show correct counts — no 401 error | |
+| P3-16 | Open trip expenses | Loads expense summary — no 401 error | |
+
+### Frontend — Role-Based Navigation
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P3-17 | Login as DRIVER → open drawer | Sees: Dashboard, Trips only. Allocation and Master Data hidden | |
+| P3-18 | Login as SUPERVISOR → open drawer | Sees: Dashboard, Trips, Shift Allocation. Master Data hidden | |
+| P3-19 | Login as MANAGER → open drawer | Sees all items including Vehicles, Drivers, Routes | |
+| P3-20 | Login as SUPER_ADMIN → open drawer | Sees all items | |
+| P3-21 | Role badge shown in drawer header | Correct role_name displayed (e.g. "MANAGER") | |
+| P3-22 | Logout clears role | After logout and re-login as different role, drawer reflects new role | |
+| P3-23 | Token expiry → make GET request | DioError raised — user should be redirected to login (manual step; 401 interceptor Phase 4) | |

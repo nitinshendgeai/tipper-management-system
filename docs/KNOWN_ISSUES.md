@@ -1,8 +1,8 @@
 # Known Issues — Tipper Management ERP
 
-**Version:** 2.0.0  
-**Last Updated:** 2026-05-17  
-**Phase:** System Stabilization  
+**Version:** 2.1.0  
+**Last Updated:** 2026-05-18  
+**Phase:** System Stabilization — Phase 3 RBAC + Multi-Tenant  
 
 ---
 
@@ -133,10 +133,10 @@ This assumes that the legacy `auth.roles` Admin row always has `id=1`. If the da
 
 ### DB-001 — Duplicate `get_db()` session factory
 **Severity:** 🟢 Low  
-**Files:** `app/api/dependencies.py`, `app/api/trip_api.py`, `app/api/dashboard_api.py`  
-**Description:** `get_db()` is defined centrally in `dependencies.py` but also re-defined locally in `trip_api.py` and `dashboard_api.py`. This creates code duplication and inconsistency — changes to session handling must be made in multiple places.  
-**Fix:** Remove local `get_db()` definitions from `trip_api.py` and `dashboard_api.py`, import from `dependencies.py`.  
-**Status:** 🔧 Identified — Fix in Phase 2
+**Files:** `app/api/dependencies.py`, `app/api/trip_api.py`, `app/api/dashboard_api.py`, `app/api/vehicle_api.py`, `app/api/driver_api.py`, `app/api/route_api.py`, `app/api/allocation_api.py`, `app/api/trip_expense_api.py`  
+**Description:** `get_db()` is defined centrally in `dependencies.py` but also re-defined locally in 7 API files. This creates code duplication — changes to session handling must be made in multiple places.  
+**Fix:** Remove local `get_db()` definitions from all API files, import from `dependencies.py`.  
+**Status:** ✅ Fixed in Phase 2 (trip_api, dashboard_api) + Phase 3 (vehicle, driver, route, allocation, trip_expense)
 
 ---
 
@@ -234,14 +234,80 @@ Cross-origin requests are allowed from any domain. In production this means any 
 
 ---
 
-## Phase 2 Fix Tracker
+## Phase 3 Issues Added
+
+### TENANT-001 — `_build_list_item()` enrichment queries cross-tenant unscoped
+**Severity:** 🟠 High  
+**File:** `app/api/trip_api.py` — `_build_list_item()`  
+**Description:** Vehicle, Driver, and Route lookups inside `_build_list_item()` used raw `db.query(Model)` with no `filter_by_company()`, allowing enrichment to theoretically pull records from other tenants.  
+**Fix:** Added `filter_by_company()` to all three enrichment queries.  
+**Status:** ✅ Fixed in Phase 3
+
+---
+
+### TENANT-002 — `_recompute_trip_expense()` and callers lacked company scoping
+**Severity:** 🟠 High  
+**File:** `app/api/trip_expense_api.py`  
+**Description:** `_recompute_trip_expense()` summed TripExpense rows and updated Trip without filtering by `company_id`. `list_expenses()` and `delete_expense()` also lacked `filter_by_company()` on TripExpense queries.  
+**Fix:** Refactored function to accept `company_id`, added `filter_by_company()` throughout.  
+**Status:** ✅ Fixed in Phase 3
+
+---
+
+### TENANT-003 — `allocation_api._enrich()` enrichment queries unscoped
+**Severity:** 🟠 High  
+**File:** `app/api/allocation_api.py` — `_enrich()`  
+**Description:** Vehicle, Driver, and User lookups in `_enrich()` had no company scoping, risking cross-tenant data leaks in enriched assignment responses.  
+**Fix:** Added `filter_by_company()` to vehicle and driver lookups; user lookup scoped via `company_id` filter.  
+**Status:** ✅ Fixed in Phase 3
+
+---
+
+### FE-001 — Frontend GET requests missing Authorization header (10 call sites)
+**Severity:** 🔴 Critical  
+**Files:** `vehicle_service.dart`, `driver_service.dart`, `route_service.dart`, `trip_service.dart`, `allocation_service.dart`, `dashboard_service.dart`, `trip_expense_service.dart`  
+**Description:** All GET methods sent requests without a Bearer token. The backend requires `require_permission()` on all these endpoints — every GET would return HTTP 401 in production. `dashboard_service.dart` also had no `_authOptions()` method at all.  
+**Fix:** Added `_authOptions()` call to all GET methods. Added TokenStorage import and `_authOptions()` to `DashboardService`.  
+**Status:** ✅ Fixed in Phase 3
+
+---
+
+### FE-002 — JWT role_name not decoded or persisted after login
+**Severity:** 🟠 High  
+**Files:** `auth_service.dart`, `token_storage.dart`  
+**Description:** After a successful login, the JWT token was saved but the `role_name` claim was never decoded from the payload. The drawer and screens had no role context.  
+**Fix:** Added JWT payload base64-decode in `auth_service.dart` after login. Added `saveRole()`, `getRole()`, `clearRole()`, `clearAll()` to `TokenStorage`. Logout now calls `clearAll()`.  
+**Status:** ✅ Fixed in Phase 3
+
+---
+
+### FE-003 — App drawer shows all menu items to all roles (no RBAC)
+**Severity:** 🟠 High  
+**File:** `core/widgets/app_drawer.dart`  
+**Description:** DRIVER users could see and access Vehicles, Drivers, Routes, and Shift Allocation screens — all of which require SUPERVISOR or MANAGER permission. Navigation items were not gated by role.  
+**Fix:** Converted `AppDrawer` to `StatefulWidget`, loads role from `TokenStorage` on init. Menu visibility:  
+- Dashboard + Trips: ALL roles  
+- Shift Allocation: SUPERVISOR, MANAGER, SUPER_ADMIN only  
+- Master Data section (Vehicles, Drivers, Routes): MANAGER, SUPER_ADMIN only  
+- Role badge added to brand header for clarity.  
+**Status:** ✅ Fixed in Phase 3
+
+---
+
+## Phase 2 + Phase 3 Fix Tracker
 
 | Issue ID | Description | Priority | Status |
 |---|---|---|---|
-| AUTH-001 | Login email-only lookup | 🔴 Critical | 🔧 Phase 2 |
+| AUTH-001 | Login email-only lookup | 🔴 Critical | 📋 Phase 4 |
 | AUTH-002 | `/auth/me` uses legacy dependency | 🟠 High | ✅ Fixed in Phase 2 |
-| AUTH-003 | Weak default SECRET_KEY | 🔴 Critical | 🔧 Phase 2 (env) |
+| AUTH-003 | Weak default SECRET_KEY | 🔴 Critical | 🔧 Env-level (must set in Railway) |
 | AUTH-006 | `role_id=1` hardcoded | 🟡 Medium | ✅ Fixed in Phase 2 |
 | START-001 | Bootstrap functions not called | 🟠 High | ✅ Fixed in Phase 2 |
 | START-002 | `init_db()` never called | 🟡 Medium | ✅ Fixed in Phase 2 |
-| DB-001 | Duplicate `get_db()` | 🟢 Low | ✅ Fixed in Phase 2 |
+| DB-001 | Duplicate `get_db()` in 7 API files | 🟢 Low | ✅ Fixed in Phase 2+3 |
+| TENANT-001 | Trip `_build_list_item()` unscoped enrichment | 🟠 High | ✅ Fixed in Phase 3 |
+| TENANT-002 | Trip expense queries and recompute unscoped | 🟠 High | ✅ Fixed in Phase 3 |
+| TENANT-003 | Allocation `_enrich()` unscoped | 🟠 High | ✅ Fixed in Phase 3 |
+| FE-001 | Frontend GET requests missing auth token | 🔴 Critical | ✅ Fixed in Phase 3 |
+| FE-002 | JWT role not decoded or persisted | 🟠 High | ✅ Fixed in Phase 3 |
+| FE-003 | App drawer shows all menus regardless of role | 🟠 High | ✅ Fixed in Phase 3 |

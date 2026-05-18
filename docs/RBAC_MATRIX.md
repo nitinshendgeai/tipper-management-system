@@ -1,8 +1,8 @@
 # RBAC Matrix — Tipper Management ERP
 
-**Version:** 2.0.0  
-**Last Updated:** 2026-05-17  
-**Phase:** System Stabilization  
+**Version:** 2.1.0  
+**Last Updated:** 2026-05-18  
+**Phase:** System Stabilization — Phase 3 Complete  
 
 ---
 
@@ -120,9 +120,31 @@ Defined in `app/core/permissions.py` as `Permission(str, Enum)`:
 user_role = db.query(UserRole).filter(UserRole.id == user.user_role_id).first()
 role_name = user_role.role_name  # "SUPER_ADMIN" | "MANAGER" | "SUPERVISOR" | "DRIVER"
 
-# JWT payload:
-{ "role_name": "SUPER_ADMIN", "company_id": "uuid", "sub": "email" }
+# JWT payload (Phase 3 addition: user_id included):
+{ "sub": "email", "user_id": 42, "role_id": 2, "role_name": "MANAGER", "company_id": "uuid" }
 ```
+
+### Frontend Role Enforcement (Phase 3)
+
+The Flutter app now enforces RBAC on the navigation layer:
+
+```dart
+// token_storage.dart — role persisted after login
+await TokenStorage.saveRole(roleName);   // e.g. "MANAGER"
+
+// app_drawer.dart — menu visibility by role
+bool get _canViewAllocation =>   // SUPERVISOR, MANAGER, SUPER_ADMIN
+    _Role.allocationRoles.contains(_roleName);
+bool get _canViewMasterData =>   // MANAGER, SUPER_ADMIN only
+    _Role.masterDataRoles.contains(_roleName);
+```
+
+| Role | Dashboard | Trips | Allocation | Vehicles/Drivers/Routes |
+|---|---|---|---|---|
+| DRIVER | ✅ | ✅ | ❌ hidden | ❌ hidden |
+| SUPERVISOR | ✅ | ✅ | ✅ | ❌ hidden |
+| MANAGER | ✅ | ✅ | ✅ | ✅ |
+| SUPER_ADMIN | ✅ | ✅ | ✅ | ✅ |
 
 ### Permission Check (dependencies.py)
 
@@ -148,12 +170,16 @@ def check_permission(user_role: str, required_permission: Permission) -> bool:
 
 ## Known RBAC Gaps
 
-| Gap | Description | Severity |
-|---|---|---|
-| Admin endpoint uses legacy role_id=1 | `/admin/dashboard` uses `RoleChecker([1])` not RBAC | 🟡 Medium |
-| No MANAGE_ALLOCATIONS permission | Allocation endpoints reuse MANAGE_VEHICLES — semantically incorrect | 🟢 Low |
-| No user management API | `MANAGE_USERS` permission exists but no `/users/` endpoint | 🟡 Medium |
-| `/auth/me` fixed in Phase 2 | Now uses `get_current_tenant_user` for proper isolation | ✅ Fixed |
+| Gap | Description | Severity | Status |
+|---|---|---|---|
+| Admin endpoint uses legacy role_id=1 | `/admin/dashboard` uses `RoleChecker([1])` not RBAC | 🟡 Medium | 📋 Phase 4 |
+| No MANAGE_ALLOCATIONS permission | Allocation endpoints reuse MANAGE_VEHICLES — semantically incorrect | 🟢 Low | 📋 Phase 4 |
+| No user management API | `MANAGE_USERS` permission exists but no `/users/` endpoint | 🟡 Medium | 📋 Phase 4 |
+| `/auth/me` fixed in Phase 2 | Now uses `get_current_tenant_user` for proper isolation | ✅ Fixed | ✅ Phase 2 |
+| Frontend auth tokens missing | All GET requests sent without Bearer token | 🔴 Critical | ✅ Fixed Phase 3 |
+| Frontend role not persisted | JWT role_name not decoded or stored after login | 🟠 High | ✅ Fixed Phase 3 |
+| Drawer shows all items to all roles | No role-based menu visibility | 🟠 High | ✅ Fixed Phase 3 |
+| No 401 interceptor in Dio | Expired tokens do not redirect to login screen | 🟡 Medium | 📋 Phase 4 |
 
 ---
 
