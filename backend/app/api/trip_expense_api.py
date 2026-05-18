@@ -10,8 +10,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from app.db.session import SessionLocal
-
 from app.models.trip import Trip, TripStatus
 from app.models.trip_expense import TripExpense
 
@@ -21,36 +19,37 @@ from app.schemas.trip_expense_schema import (
     TripExpenseSummary,
 )
 
-from app.api.dependencies import require_permission
+from app.api.dependencies import require_permission, get_db
 from app.core.permissions import Permission
+from app.core.tenant import TenantContext
 from app.db.tenant_queries import filter_by_company
 
+# Phase 3 cleanup (DB-001): get_db() imported from dependencies — local copy removed
 
 router = APIRouter()
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-def _recompute_trip_expense(trip_id: int, db: Session) -> float:
-    """Sum all logged expenses for this trip and persist on the trip row."""
-
+def _recompute_trip_expense(trip_id: int, company_id, db: Session) -> float:
+    """
+    Sum all logged expenses for this trip and persist on the trip row.
+    Phase 3 fix: company_id passed explicitly to scope the Trip update.
+    """
     total = (
         db.query(func.coalesce(func.sum(TripExpense.amount), 0.0))
-        .filter(TripExpense.trip_id == trip_id)
+        .filter(
+            TripExpense.trip_id == trip_id,
+            TripExpense.company_id == company_id,
+        )
         .scalar()
     )
 
     total = float(total or 0.0)
 
-    db.query(Trip).filter(Trip.id == trip_id).update(
-        {"trip_expense": total}
-    )
+    # Scope the update to company_id for defence-in-depth
+    db.query(Trip).filter(
+        Trip.id == trip_id,
+        Trip.company_id == company_id,
+    ).update({"trip_expense": total})
 
     return total
 
@@ -93,7 +92,7 @@ def add_expense(
     db.flush()
 
     # Recompute trip.trip_expense total
-    _recompute_trip_expense(trip_id, db)
+    _recompute_trip_expense(trip_id, current_user.company_id, db)
 
     db.commit()
     db.refresh(expense)
@@ -121,7 +120,7 @@ def list_expenses(
         raise HTTPException(status_code=404, detail="Trip not found")
 
     expenses = (
-        db.query(TripExpense)
+        filter_by_company(db.query(TripExpense), TripExpense)
         .filter(TripExpense.trip_id == trip_id)
         .order_by(TripExpense.created_at)
         .all()
@@ -168,7 +167,9 @@ def delete_expense(
             detail="Expenses can only be deleted from STARTED trips"
         )
 
-    expense = db.query(TripExpense).filter(
+    expense = filter_by_company(
+        db.query(TripExpense), TripExpense
+    ).filter(
         TripExpense.id == expense_id,
         TripExpense.trip_id == trip_id
     ).first()
@@ -179,7 +180,7 @@ def delete_expense(
     db.delete(expense)
     db.flush()
 
-    _recompute_trip_expense(trip_id, db)
+    _recompute_trip_expense(trip_id, current_user.company_id, db)
 
     db.commit()
 

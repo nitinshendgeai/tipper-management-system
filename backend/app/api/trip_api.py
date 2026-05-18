@@ -54,10 +54,10 @@ def _logged_expense_total(trip_id: int, db: Session) -> float:
 
 
 def _build_list_item(trip: Trip, db: Session) -> TripListItem:
-
-    vehicle = db.query(Vehicle).filter(Vehicle.id == trip.vehicle_id).first()
-    driver  = db.query(Driver).filter(Driver.id == trip.driver_id).first()
-    route   = db.query(Route).filter(Route.id == trip.route_id).first() if trip.route_id else None
+    # Phase 3 fix: scope enrichment queries to company for defence-in-depth
+    vehicle = filter_by_company(db.query(Vehicle), Vehicle).filter(Vehicle.id == trip.vehicle_id).first()
+    driver  = filter_by_company(db.query(Driver), Driver).filter(Driver.id == trip.driver_id).first()
+    route   = filter_by_company(db.query(Route), Route).filter(Route.id == trip.route_id).first() if trip.route_id else None
 
     route_label = None
     if route:

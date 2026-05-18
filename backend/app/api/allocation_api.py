@@ -15,8 +15,6 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal
-
 from app.models.assignment import DriverVehicleAssignment
 from app.models.vehicle import Vehicle, VehicleStatus
 from app.models.driver import Driver, DriverStatus
@@ -30,29 +28,25 @@ from app.schemas.assignment_schema import (
     VehicleAssignmentStatus,
 )
 
-from app.api.dependencies import require_permission
+from app.api.dependencies import require_permission, get_db
 from app.core.permissions import Permission
 from app.db.tenant_queries import filter_by_company
 
+# Phase 3 cleanup (DB-001): get_db() imported from dependencies — local copy removed
 
 router = APIRouter()
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 # ─── Helper ───────────────────────────────────────────────────────────────────
 
 def _enrich(assignment: DriverVehicleAssignment, db: Session) -> AssignmentDetail:
-
-    vehicle = db.query(Vehicle).filter(Vehicle.id == assignment.vehicle_id).first()
-    driver  = db.query(Driver).filter(Driver.id == assignment.driver_id).first()
-    user    = db.query(User).filter(User.id == assignment.assigned_by).first() if assignment.assigned_by else None
+    # Phase 3 fix: use filter_by_company() on enrichment queries for defence-in-depth.
+    # The assignment is already company-scoped, but explicit filters prevent any
+    # future regression from returning cross-tenant vehicle/driver rows.
+    vehicle = filter_by_company(db.query(Vehicle), Vehicle).filter(Vehicle.id == assignment.vehicle_id).first()
+    driver  = filter_by_company(db.query(Driver), Driver).filter(Driver.id == assignment.driver_id).first()
+    # User lookup is company-scoped via company_id on the User model
+    user    = db.query(User).filter(User.id == assignment.assigned_by, User.company_id == assignment.company_id).first() if assignment.assigned_by else None
 
     return AssignmentDetail(
         id=assignment.id,
