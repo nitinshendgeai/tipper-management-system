@@ -35,6 +35,7 @@ from app.schemas.trip_schema import (
 
 from app.api.dependencies import require_permission, get_current_tenant_user, get_db
 from app.core.permissions import Permission
+from app.core.tenant import TenantContext
 from app.db.tenant_queries import filter_by_company
 
 # Phase 2 fix (DB-001): get_db() removed from local definition — imported from dependencies
@@ -227,6 +228,22 @@ def list_trips(
     db: Session = Depends(get_db)
 ):
     query = filter_by_company(db.query(Trip), Trip)
+
+    # Phase 4 fix: DRIVER role can only see their own trips.
+    # Resolve the driver profile via user_id link (set by MANAGER when creating driver).
+    role_name = TenantContext.get_role_name()
+    if role_name == "DRIVER":
+        driver_profile = filter_by_company(
+            db.query(Driver), Driver
+        ).filter(
+            Driver.user_id == current_user.id,
+            Driver.is_active == True,
+        ).first()
+        if driver_profile:
+            query = query.filter(Trip.driver_id == driver_profile.id)
+        else:
+            # No driver profile linked to this user account — return empty
+            return []
 
     if status:
         query = query.filter(Trip.trip_status == status.upper())

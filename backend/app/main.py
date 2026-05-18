@@ -20,6 +20,7 @@ from app.api.trip_api import router as trip_router
 from app.api.trip_expense_api import router as trip_expense_router
 
 from app.api.dashboard_api import router as dashboard_router
+from app.api.attendance_api import router as attendance_router
 
 from app.models.company import Company, CompanySettings, UserRole
 from app.models.user import User
@@ -33,6 +34,7 @@ from app.models.trip import Trip
 from app.models.trip_expense import TripExpense
 
 from app.models.assignment import DriverVehicleAssignment
+from app.models.attendance import DriverAttendance
 
 
 
@@ -144,6 +146,15 @@ app.include_router(
     trip_expense_router,
     prefix="/trips",
     tags=["Trip Expenses"]
+)
+
+
+# ─── Attendance ───────────────────────────────────────────────────────────────
+
+app.include_router(
+    attendance_router,
+    prefix="/attendance",
+    tags=["Driver Attendance"]
 )
 
 

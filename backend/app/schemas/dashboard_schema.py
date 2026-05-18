@@ -23,6 +23,9 @@ class DashboardStats(BaseModel):
     drivers_on_trip: int
     drivers_off_duty: int
 
+    # ── Attendance (today) ─────────────────────────────────────────────────────
+    drivers_on_duty: int        # punched in today, shift still active
+
     # ── Trip lifecycle ─────────────────────────────────────────────────────────
     trips_total: int
     trips_created: int          # waiting to start

@@ -3,11 +3,14 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
+from datetime import date as _date
+
 from app.models.vehicle import Vehicle, VehicleStatus
 from app.models.driver import Driver, DriverStatus
 from app.models.route import Route
 from app.models.trip import Trip, TripStatus
 from app.models.trip_expense import TripExpense
+from app.models.attendance import DriverAttendance, AttendanceStatus
 
 from app.schemas.dashboard_schema import DashboardStats
 from app.api.dependencies import require_permission, get_db
@@ -48,6 +51,18 @@ def get_dashboard_stats(
     # ── Route count (scoped to company) ───────────────────────────────────────
 
     total_routes = filter_by_company(db.query(func.count(Route.id)), Route).filter(Route.is_active == True).scalar() or 0
+
+    # ── Attendance — drivers on duty today (scoped to company) ────────────────
+
+    drivers_on_duty = (
+        filter_by_company(db.query(func.count(DriverAttendance.id)), DriverAttendance)
+        .filter(
+            DriverAttendance.shift_date == _date.today(),
+            DriverAttendance.status == AttendanceStatus.PRESENT,
+            DriverAttendance.is_active == True,
+        )
+        .scalar() or 0
+    )
 
     # ── Trip lifecycle counts (scoped to company) ──────────────────────────────
 
@@ -98,6 +113,7 @@ def get_dashboard_stats(
         drivers_available=drivers_available,
         drivers_on_trip=drivers_on_trip,
         drivers_off_duty=drivers_off_duty,
+        drivers_on_duty=drivers_on_duty,
 
         trips_total=trips_total,
         trips_created=trips_created,

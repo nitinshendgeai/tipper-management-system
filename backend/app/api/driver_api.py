@@ -52,6 +52,7 @@ def create_driver(
     driver = Driver(
         company_id=current_user.company_id,
         vehicle_id=data.vehicle_id,
+        user_id=data.user_id,  # Phase 4: optional link to auth.users
         full_name=data.full_name,
         mobile_number=data.mobile_number,
         license_number=data.license_number,
