@@ -23,7 +23,11 @@ class DriverService {
 
   /// Fetches all active drivers from the backend.
   Future<List<DriverModel>> getDrivers() async {
-    final response = await _dio.get('${ApiConstants.baseUrl}/drivers/');
+    final options = await _authOptions(); // Phase 3 fix: was missing auth token
+    final response = await _dio.get(
+      '${ApiConstants.baseUrl}/drivers/',
+      options: options,
+    );
 
     final List data = response.data as List;
 

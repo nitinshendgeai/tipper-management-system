@@ -20,8 +20,10 @@ class AllocationService {
   // ─── List active assignments ─────────────────────────────────────────────
 
   Future<List<AssignmentModel>> getActiveAssignments() async {
+    final options = await _authOptions(); // Phase 3 fix: was missing auth token
     final response = await _dio.get(
       '${ApiConstants.baseUrl}/allocations/active',
+      options: options,
     );
     final List data = response.data as List;
     return data
@@ -32,7 +34,11 @@ class AllocationService {
   // ─── List all assignments (history) ─────────────────────────────────────
 
   Future<List<AssignmentModel>> getAllAssignments() async {
-    final response = await _dio.get('${ApiConstants.baseUrl}/allocations/');
+    final options = await _authOptions(); // Phase 3 fix: was missing auth token
+    final response = await _dio.get(
+      '${ApiConstants.baseUrl}/allocations/',
+      options: options,
+    );
     final List data = response.data as List;
     return data
         .map((e) => AssignmentModel.fromJson(e as Map<String, dynamic>))
@@ -42,8 +48,10 @@ class AllocationService {
   // ─── Get vehicle assignment status ──────────────────────────────────────
 
   Future<VehicleAssignmentStatus> getVehicleStatus(int vehicleId) async {
+    final options = await _authOptions(); // Phase 3 fix: was missing auth token
     final response = await _dio.get(
       '${ApiConstants.baseUrl}/allocations/vehicle/$vehicleId/status',
+      options: options,
     );
     return VehicleAssignmentStatus.fromJson(
       response.data as Map<String, dynamic>,

@@ -23,7 +23,11 @@ class VehicleService {
 
   /// Fetches all active vehicles from the backend.
   Future<List<VehicleModel>> getVehicles() async {
-    final response = await _dio.get('${ApiConstants.baseUrl}/vehicles/');
+    final options = await _authOptions(); // Phase 3 fix: was missing auth token
+    final response = await _dio.get(
+      '${ApiConstants.baseUrl}/vehicles/',
+      options: options,
+    );
 
     final List data = response.data as List;
 

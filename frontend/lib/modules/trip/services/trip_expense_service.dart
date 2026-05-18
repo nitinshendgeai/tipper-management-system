@@ -20,8 +20,10 @@ class TripExpenseService {
   // ─── Get all expenses for a trip ──────────────────────────────────────────
 
   Future<TripExpenseSummary> getExpenses(int tripId) async {
+    final options = await _authOptions(); // Phase 3 fix: was missing auth token
     final response = await _dio.get(
       '${ApiConstants.baseUrl}/trips/$tripId/expenses',
+      options: options,
     );
     return TripExpenseSummary.fromJson(response.data as Map<String, dynamic>);
   }

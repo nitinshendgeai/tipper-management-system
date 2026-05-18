@@ -31,9 +31,11 @@ class TripService {
     if (vehicleId != null) params['vehicle_id'] = vehicleId;
     if (driverId != null) params['driver_id'] = driverId;
 
+    final options = await _authOptions(); // Phase 3 fix: was missing auth token
     final response = await _dio.get(
       '${ApiConstants.baseUrl}/trips/',
       queryParameters: params.isNotEmpty ? params : null,
+      options: options,
     );
 
     final List data = response.data as List;
@@ -44,7 +46,11 @@ class TripService {
 
   /// Get a single trip by ID.
   Future<TripModel> getTrip(int tripId) async {
-    final response = await _dio.get('${ApiConstants.baseUrl}/trips/$tripId');
+    final options = await _authOptions(); // Phase 3 fix: was missing auth token
+    final response = await _dio.get(
+      '${ApiConstants.baseUrl}/trips/$tripId',
+      options: options,
+    );
     return TripModel.fromJson(response.data as Map<String, dynamic>);
   }
 

@@ -23,7 +23,11 @@ class RouteService {
 
   /// Fetches all active routes from the backend.
   Future<List<RouteModel>> getRoutes() async {
-    final response = await _dio.get('${ApiConstants.baseUrl}/routes/');
+    final options = await _authOptions(); // Phase 3 fix: was missing auth token
+    final response = await _dio.get(
+      '${ApiConstants.baseUrl}/routes/',
+      options: options,
+    );
 
     final List data = response.data as List;
 

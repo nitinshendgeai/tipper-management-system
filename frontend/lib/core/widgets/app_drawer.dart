@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../storage/token_storage.dart';
 import '../../modules/auth/services/auth_service.dart';
 import '../../modules/auth/screens/login_screen.dart';
 import '../../modules/vehicle/screens/vehicle_screen.dart';
@@ -9,17 +10,57 @@ import '../../modules/route/screens/route_screen.dart';
 import '../../modules/trip/screens/trip_screen.dart';
 import '../../modules/allocation/screens/allocation_screen.dart';
 
+// Phase 3: RBAC role constants matching backend Role.name values
+class _Role {
+  static const superAdmin = 'SUPER_ADMIN';
+  static const manager   = 'MANAGER';
+  static const supervisor = 'SUPERVISOR';
+  static const driver    = 'DRIVER';
+
+  /// Roles that may view and manage Master Data (Vehicles, Drivers, Routes).
+  static const masterDataRoles = {superAdmin, manager};
+
+  /// Roles that may access Shift Allocation.
+  static const allocationRoles = {superAdmin, manager, supervisor};
+}
+
 /// Navigation drawer used across the app.
 ///
-/// Displays the Tipper ERP brand header, a user profile section,
-/// module navigation links, and a logout action.
-class AppDrawer extends StatelessWidget {
-  /// The route name of the currently active screen, used to highlight
-  /// the correct menu item. Pass a simple string like `'dashboard'`,
-  /// `'vehicles'`, `'drivers'`, etc.
+/// Phase 3: Converted to StatefulWidget to load role from secure storage
+/// and apply RBAC-based menu visibility:
+///   DRIVER     → Dashboard, Trips
+///   SUPERVISOR → Dashboard, Trips, Shift Allocation
+///   MANAGER    → all items
+///   SUPER_ADMIN → all items
+class AppDrawer extends StatefulWidget {
+  /// The route name of the currently active screen (e.g. 'dashboard', 'trips').
   final String activeRoute;
 
   const AppDrawer({super.key, required this.activeRoute});
+
+  @override
+  State<AppDrawer> createState() => _AppDrawerState();
+}
+
+class _AppDrawerState extends State<AppDrawer> {
+  String? _roleName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRole();
+  }
+
+  Future<void> _loadRole() async {
+    final role = await TokenStorage.getRole();
+    if (mounted) setState(() => _roleName = role);
+  }
+
+  bool get _canViewAllocation =>
+      _roleName == null || _Role.allocationRoles.contains(_roleName);
+
+  bool get _canViewMasterData =>
+      _roleName == null || _Role.masterDataRoles.contains(_roleName);
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +71,7 @@ class AppDrawer extends StatelessWidget {
         child: Column(
           children: [
             // ── Brand header ───────────────────────────────────────────────
-            _BrandHeader(),
+            _BrandHeader(roleName: _roleName),
 
             const SizedBox(height: 8),
 
@@ -47,72 +88,63 @@ class AppDrawer extends StatelessWidget {
                     icon: Icons.dashboard_rounded,
                     label: 'Dashboard',
                     routeKey: 'dashboard',
-                    activeRoute: activeRoute,
-                    onTap: () => _navigateTo(
-                      context,
-                      'dashboard',
-                      // Dashboard is the root; just close the drawer.
-                      null,
-                    ),
+                    activeRoute: widget.activeRoute,
+                    onTap: () => _navigateTo(context, 'dashboard', null),
                   ),
                   _NavItem(
                     icon: Icons.local_shipping_rounded,
                     label: 'Trips',
                     routeKey: 'trips',
-                    activeRoute: activeRoute,
+                    activeRoute: widget.activeRoute,
                     onTap: () => _navigateTo(
-                      context,
-                      'trips',
-                      const TripScreen(),
-                    ),
-                  ),
-                  _NavItem(
-                    icon: Icons.swap_horiz_rounded,
-                    label: 'Shift Allocation',
-                    routeKey: 'allocation',
-                    activeRoute: activeRoute,
-                    onTap: () => _navigateTo(
-                      context,
-                      'allocation',
-                      const AllocationScreen(),
+                      context, 'trips', const TripScreen(),
                     ),
                   ),
 
-                  const SizedBox(height: 8),
-                  _SectionLabel('Master Data'),
-                  _NavItem(
-                    icon: Icons.fire_truck_rounded,
-                    label: 'Vehicles',
-                    routeKey: 'vehicles',
-                    activeRoute: activeRoute,
-                    onTap: () => _navigateTo(
-                      context,
-                      'vehicles',
-                      const VehicleScreen(),
+                  // SUPERVISOR and above only
+                  if (_canViewAllocation)
+                    _NavItem(
+                      icon: Icons.swap_horiz_rounded,
+                      label: 'Shift Allocation',
+                      routeKey: 'allocation',
+                      activeRoute: widget.activeRoute,
+                      onTap: () => _navigateTo(
+                        context, 'allocation', const AllocationScreen(),
+                      ),
                     ),
-                  ),
-                  _NavItem(
-                    icon: Icons.people_rounded,
-                    label: 'Drivers',
-                    routeKey: 'drivers',
-                    activeRoute: activeRoute,
-                    onTap: () => _navigateTo(
-                      context,
-                      'drivers',
-                      const DriverScreen(),
+
+                  // MANAGER and above only
+                  if (_canViewMasterData) ...[
+                    const SizedBox(height: 8),
+                    _SectionLabel('Master Data'),
+                    _NavItem(
+                      icon: Icons.fire_truck_rounded,
+                      label: 'Vehicles',
+                      routeKey: 'vehicles',
+                      activeRoute: widget.activeRoute,
+                      onTap: () => _navigateTo(
+                        context, 'vehicles', const VehicleScreen(),
+                      ),
                     ),
-                  ),
-                  _NavItem(
-                    icon: Icons.route_rounded,
-                    label: 'Routes',
-                    routeKey: 'routes',
-                    activeRoute: activeRoute,
-                    onTap: () => _navigateTo(
-                      context,
-                      'routes',
-                      const RouteScreen(),
+                    _NavItem(
+                      icon: Icons.people_rounded,
+                      label: 'Drivers',
+                      routeKey: 'drivers',
+                      activeRoute: widget.activeRoute,
+                      onTap: () => _navigateTo(
+                        context, 'drivers', const DriverScreen(),
+                      ),
                     ),
-                  ),
+                    _NavItem(
+                      icon: Icons.route_rounded,
+                      label: 'Routes',
+                      routeKey: 'routes',
+                      activeRoute: widget.activeRoute,
+                      onTap: () => _navigateTo(
+                        context, 'routes', const RouteScreen(),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -133,7 +165,7 @@ class AppDrawer extends StatelessWidget {
   void _navigateTo(BuildContext context, String routeKey, Widget? screen) {
     Navigator.pop(context); // close drawer
 
-    if (routeKey == activeRoute) return; // already here
+    if (routeKey == widget.activeRoute) return; // already here
 
     if (screen == null) {
       // Pop back to dashboard (root)
@@ -148,6 +180,9 @@ class AppDrawer extends StatelessWidget {
 // ─── Brand header ─────────────────────────────────────────────────────────────
 
 class _BrandHeader extends StatelessWidget {
+  final String? roleName;
+  const _BrandHeader({this.roleName});
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -201,6 +236,26 @@ class _BrandHeader extends StatelessWidget {
               letterSpacing: 0.2,
             ),
           ),
+          // Phase 3: show role badge when available
+          if (roleName != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                roleName!,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -376,7 +431,7 @@ class _LogoutTile extends StatelessWidget {
     if (confirmed != true) return;
     if (!context.mounted) return;
 
-    await AuthService().logout();
+    await AuthService().logout(); // Phase 3: clears token + role via clearAll()
 
     if (!context.mounted) return;
 
