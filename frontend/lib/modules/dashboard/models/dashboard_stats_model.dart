@@ -14,6 +14,7 @@ class DashboardStatsModel {
   final int driversAvailable;
   final int driversOnTrip;
   final int driversOffDuty;
+  final int driversOnDuty;     // punched in today, shift still active
 
   // Trip lifecycle
   final int tripsTotal;
@@ -41,6 +42,7 @@ class DashboardStatsModel {
     required this.driversAvailable,
     required this.driversOnTrip,
     required this.driversOffDuty,
+    required this.driversOnDuty,
     required this.tripsTotal,
     required this.tripsCreated,
     required this.tripsActive,
@@ -66,6 +68,7 @@ class DashboardStatsModel {
       driversAvailable: json['drivers_available'] as int? ?? 0,
       driversOnTrip: json['drivers_on_trip'] as int? ?? 0,
       driversOffDuty: json['drivers_off_duty'] as int? ?? 0,
+      driversOnDuty: json['drivers_on_duty'] as int? ?? 0,
 
       tripsTotal: json['trips_total'] as int? ?? 0,
       tripsCreated: json['trips_created'] as int? ?? 0,
@@ -93,6 +96,7 @@ class DashboardStatsModel {
     driversAvailable: 0,
     driversOnTrip: 0,
     driversOffDuty: 0,
+    driversOnDuty: 0,
     tripsTotal: 0,
     tripsCreated: 0,
     tripsActive: 0,

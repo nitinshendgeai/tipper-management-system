@@ -162,6 +162,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 10),
                   _fleetStatusRow(stats, loading),
 
+                  const SizedBox(height: 16),
+
+                  // ── Driver Attendance Today ───────────────────────────────
+                  _sectionLabel('Attendance Today'),
+                  const SizedBox(height: 10),
+                  _attendanceRow(stats, loading),
+
                   const SizedBox(height: 24),
 
                   // ── Section: Master Data ─────────────────────────────────
@@ -302,6 +309,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _statusPill('On Trip', stats.vehiclesOnTrip, AppColors.warning, loading),
         const SizedBox(width: 8),
         _statusPill('Maintenance', stats.vehiclesMaintenance, AppColors.error, loading),
+      ],
+    );
+  }
+
+  // ─── Attendance row ────────────────────────────────────────────────────────
+
+  Widget _attendanceRow(DashboardStatsModel stats, bool loading) {
+    return Row(
+      children: [
+        _statusPill('On Duty', stats.driversOnDuty, AppColors.success, loading),
+        const SizedBox(width: 8),
+        _statusPill('Available', stats.driversAvailable, const Color(0xFF0891B2), loading),
+        const SizedBox(width: 8),
+        _statusPill('On Trip', stats.driversOnTrip, AppColors.warning, loading),
+        const SizedBox(width: 8),
+        _statusPill('Off Duty', stats.driversOffDuty, AppColors.error, loading),
       ],
     );
   }

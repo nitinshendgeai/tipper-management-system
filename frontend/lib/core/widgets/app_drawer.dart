@@ -9,6 +9,7 @@ import '../../modules/driver/screens/driver_screen.dart';
 import '../../modules/route/screens/route_screen.dart';
 import '../../modules/trip/screens/trip_screen.dart';
 import '../../modules/allocation/screens/allocation_screen.dart';
+import '../../modules/attendance/screens/attendance_screen.dart';
 
 // Phase 3: RBAC role constants matching backend Role.name values
 class _Role {
@@ -22,6 +23,9 @@ class _Role {
 
   /// Roles that may access Shift Allocation.
   static const allocationRoles = {superAdmin, manager, supervisor};
+
+  /// All roles may access Attendance (DRIVER sees own; SUPERVISOR+ sees all).
+  static const attendanceRoles = {superAdmin, manager, supervisor, driver};
 }
 
 /// Navigation drawer used across the app.
@@ -62,6 +66,9 @@ class _AppDrawerState extends State<AppDrawer> {
   bool get _canViewMasterData =>
       _roleName == null || _Role.masterDataRoles.contains(_roleName);
 
+  bool get _canViewAttendance =>
+      _roleName == null || _Role.attendanceRoles.contains(_roleName);
+
   @override
   Widget build(BuildContext context) {
     return Drawer(
@@ -100,6 +107,18 @@ class _AppDrawerState extends State<AppDrawer> {
                       context, 'trips', const TripScreen(),
                     ),
                   ),
+
+                  // All roles — DRIVER sees own; SUPERVISOR+ sees company
+                  if (_canViewAttendance)
+                    _NavItem(
+                      icon: Icons.fact_check_rounded,
+                      label: 'Attendance',
+                      routeKey: 'attendance',
+                      activeRoute: widget.activeRoute,
+                      onTap: () => _navigateTo(
+                        context, 'attendance', const AttendanceScreen(),
+                      ),
+                    ),
 
                   // SUPERVISOR and above only
                   if (_canViewAllocation)
