@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.models.company import Company, CompanySettings, UserRole
 from app.models.user import User
+from app.models.role import Role
 from app.models.vehicle import Vehicle
 from app.schemas.company_schema import (
     CompanyRegisterRequest,
@@ -114,14 +115,18 @@ def register_company(data: CompanyRegisterRequest):
             .first()
         )
 
+        # Phase 2 fix (AUTH-006): resolve legacy Admin role by name, not hardcoded id=1
+        legacy_admin_role = (
+            db.query(Role).filter(Role.name == "Admin").first()
+        )
+
         admin_user = User(
             email=admin_email,
             password_hash=hash_password("admin1234"),
             full_name=f"Admin — {data.company_name}",
             company_id=company.id,
             user_role_id=super_admin_role.id if super_admin_role else None,
-            # Keep legacy role_id pointing to the existing "Admin" auth.role
-            role_id=1,
+            role_id=legacy_admin_role.id if legacy_admin_role else None,
         )
         db.add(admin_user)
 

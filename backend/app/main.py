@@ -55,9 +55,23 @@ app.add_middleware(
 @app.on_event("startup")
 def startup():
     print("[startup] Startup event triggered")
-    print("[startup] Creating database schemas via Base.metadata.create_all()")
+
+    # Step 1: Ensure PostgreSQL schemas exist before table creation
+    # ensure_database_schemas was imported but not called — fixed in Phase 2 (START-001)
+    print("[startup] Ensuring PostgreSQL schemas exist (auth, master, operations, tenant)")
+    ensure_database_schemas(engine)
+
+    # Step 2: Create all tables from ORM models
+    print("[startup] Running Base.metadata.create_all()")
     Base.metadata.create_all(bind=engine)
-    print("[startup] Database schemas created — calling seed_data()")
+
+    # Step 3: Apply safe column repairs for older database instances
+    # repair_existing_schema was imported but not called — fixed in Phase 2 (START-001)
+    print("[startup] Running repair_existing_schema() for column backfill")
+    repair_existing_schema(engine)
+
+    # Step 4: Seed legacy single-tenant roles and admin user
+    print("[startup] Calling seed_data()")
     seed_data()
 
 

@@ -3,8 +3,6 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from app.db.session import SessionLocal
-
 from app.models.vehicle import Vehicle, VehicleStatus
 from app.models.driver import Driver, DriverStatus
 from app.models.route import Route
@@ -12,20 +10,13 @@ from app.models.trip import Trip, TripStatus
 from app.models.trip_expense import TripExpense
 
 from app.schemas.dashboard_schema import DashboardStats
-from app.api.dependencies import require_permission
+from app.api.dependencies import require_permission, get_db
 from app.core.permissions import Permission
 from app.db.tenant_queries import filter_by_company
 
+# Phase 2 fix (DB-001): get_db() removed from local definition — imported from dependencies
 
 router = APIRouter()
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @router.get(

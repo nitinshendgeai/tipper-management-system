@@ -18,7 +18,7 @@ from app.core.security import (
     create_access_token
 )
 
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_tenant_user
 
 router = APIRouter()
 
@@ -28,18 +28,23 @@ router = APIRouter()
     response_model=TokenResponse
 )
 def login(data: LoginRequest):
+    """
+    Authenticate a user and return a JWT access token.
+
+    Phase 2 note: Login currently matches by email only (no company_id filter).
+    This is a known limitation (AUTH-001) — safe only when email addresses are
+    globally unique across all tenants. Full tenant-aware login (with company slug)
+    is planned for Phase 3.
+    """
 
     db = SessionLocal()
     try:
-        # For multi-tenant users, email is scoped per company so we look up
-        # by email alone (the first match). In a fully tenant-aware login the
-        # client would also supply company_id; for now we match on email.
         user = db.query(User).filter(
-            User.email == data.email
+            User.email == data.email,
+            User.is_active == True,
         ).first()
 
         if not user:
-
             raise HTTPException(
                 status_code=401,
                 detail="Invalid email or password"
@@ -49,14 +54,13 @@ def login(data: LoginRequest):
             data.password,
             user.password_hash
         ):
-
             raise HTTPException(
                 status_code=401,
                 detail="Invalid email or password"
             )
 
         # ── Resolve role name for tenant-aware token ───────────────────────────
-        role_name: str = "SUPER_ADMIN"  # default fallback
+        role_name: str = "SUPER_ADMIN"  # safe default fallback
 
         if user.user_role_id:
             user_role = db.query(UserRole).filter(
@@ -66,8 +70,11 @@ def login(data: LoginRequest):
                 role_name = user_role.role_name
 
         # ── Build JWT with tenant claims ───────────────────────────────────────
+        # Phase 3: added user_id so frontend can identify the user without
+        # an extra /auth/me round-trip and for audit trail purposes.
         token_data: dict = {
             "sub": user.email,
+            "user_id": user.id,
             "role_id": user.role_id,
             "role_name": role_name,
         }
@@ -87,8 +94,15 @@ def login(data: LoginRequest):
 
 @router.get("/me")
 def current_user(
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_tenant_user)
 ):
+    """
+    Return the authenticated user's profile.
+
+    Phase 2 fix (AUTH-002): switched from legacy get_current_user (email-only
+    lookup) to get_current_tenant_user (email + company_id lookup) for proper
+    tenant isolation.
+    """
 
     return {
         "id": current_user.id,
