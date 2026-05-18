@@ -42,6 +42,10 @@ class Permission(str, Enum):
     VIEW_FINANCE = "view_finance"
     MANAGE_EXPENSES = "manage_expenses"
 
+    # Attendance
+    VIEW_ATTENDANCE = "view_attendance"
+    MANAGE_ATTENDANCE = "manage_attendance"
+
     # Settings
     MANAGE_SETTINGS = "manage_settings"
 
@@ -63,6 +67,8 @@ ROLE_PERMISSIONS: dict[str, List[Permission]] = {
         Permission.VIEW_TRIPS,
         Permission.VIEW_FINANCE,
         Permission.MANAGE_EXPENSES,
+        Permission.VIEW_ATTENDANCE,
+        Permission.MANAGE_ATTENDANCE,
         Permission.MANAGE_SETTINGS,
     ],
     "MANAGER": [
@@ -80,6 +86,8 @@ ROLE_PERMISSIONS: dict[str, List[Permission]] = {
         Permission.VIEW_TRIPS,
         Permission.VIEW_FINANCE,
         Permission.MANAGE_EXPENSES,
+        Permission.VIEW_ATTENDANCE,
+        Permission.MANAGE_ATTENDANCE,
     ],
     "SUPERVISOR": [
         Permission.VIEW_DASHBOARD,
@@ -89,11 +97,15 @@ ROLE_PERMISSIONS: dict[str, List[Permission]] = {
         Permission.CREATE_TRIPS,
         Permission.VIEW_TRIPS,
         Permission.MANAGE_EXPENSES,
+        Permission.VIEW_ATTENDANCE,
+        Permission.MANAGE_ATTENDANCE,
     ],
     "DRIVER": [
         Permission.VIEW_DASHBOARD,
         Permission.VIEW_TRIPS,
         Permission.MANAGE_EXPENSES,
+        Permission.VIEW_ATTENDANCE,
+        Permission.MANAGE_ATTENDANCE,
     ],
 }
 

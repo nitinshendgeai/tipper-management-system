@@ -17,6 +17,9 @@ class DriverCreate(BaseModel):
 
     emergency_contact: Optional[str] = None
 
+    # Phase 4: link driver to an auth.users account for self-attendance
+    user_id: Optional[int] = None
+
 
 class DriverUpdate(BaseModel):
 
@@ -33,12 +36,18 @@ class DriverUpdate(BaseModel):
 
     emergency_contact: Optional[str] = None
 
+    # Phase 4: link/unlink driver's user account
+    user_id: Optional[int] = None
+
 
 class DriverResponse(BaseModel):
 
     id: int
 
     vehicle_id: Optional[int] = None
+
+    # Phase 4: expose linked user account ID
+    user_id: Optional[int] = None
 
     full_name: str
     mobile_number: str

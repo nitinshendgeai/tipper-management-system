@@ -38,6 +38,15 @@ class Driver(Base):
         index=True,
     )
 
+    # ─── Linked user account (optional — set when driver has a login) ─────────
+    # Phase 4: enables DRIVER-role users to self-identify their driver profile
+    user_id = Column(
+        Integer,
+        ForeignKey("auth.users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     company = relationship("Company", back_populates="drivers")
 
     vehicle_id = Column(

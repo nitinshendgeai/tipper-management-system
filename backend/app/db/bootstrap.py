@@ -40,6 +40,8 @@ def repair_existing_schema(engine: Engine) -> None:
         "ALTER TABLE IF EXISTS operations.trips ADD COLUMN IF NOT EXISTS revenue_amount DOUBLE PRECISION",
         "ALTER TABLE IF EXISTS operations.trips ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP",
         "ALTER TABLE IF EXISTS operations.trips ADD COLUMN IF NOT EXISTS cancellation_reason VARCHAR(255)",
+        # Phase 4: link driver profile to auth.users for DRIVER self-attendance
+        "ALTER TABLE IF EXISTS master.drivers ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES auth.users(id) ON DELETE SET NULL",
     ]
 
     with engine.begin() as connection:
