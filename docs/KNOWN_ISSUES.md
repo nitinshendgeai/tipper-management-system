@@ -1,8 +1,8 @@
 # Known Issues — Tipper Management ERP
 
-**Version:** 2.1.0  
+**Version:** 3.0.0  
 **Last Updated:** 2026-05-18  
-**Phase:** System Stabilization — Phase 3 RBAC + Multi-Tenant  
+**Phase:** System Stabilization — Phase 4 Operational Workflow  
 
 ---
 
@@ -294,6 +294,35 @@ Cross-origin requests are allowed from any domain. In production this means any 
 
 ---
 
+## Phase 4 Issues Added
+
+### ATTEND-001 — Driver self-identification requires user_id link
+**Severity:** 🟡 Medium  
+**File:** `backend/app/api/attendance_api.py` — `_resolve_driver()`  
+**Description:** When a DRIVER user calls `POST /attendance/punch-in` without a body, the backend attempts to find their Driver record via `Driver.user_id == current_user.id`. This only works if a MANAGER has explicitly linked the driver's auth account to their driver profile (via `PUT /drivers/{id}` with `user_id`). Without this link, the DRIVER must supply their own `driver_id` in the request body.  
+**Fix:** MANAGER must set `user_id` on each DRIVER's driver profile. This is now a supported field on `PUT /drivers/{id}`.  
+**Status:** 🔧 Partial — user_id FK added; link setup is manual  
+
+---
+
+### ATTEND-002 — No duplicate active trip prevention (same vehicle/driver)
+**Severity:** 🟡 Medium  
+**File:** `backend/app/api/trip_api.py` — `create_trip()`  
+**Description:** The system checks vehicle status (must not be ON_TRIP or MAINTENANCE), and auto-fetches driver from active assignment. However, if a vehicle has status ASSIGNED but there's already a CREATED/STARTED trip for it, a duplicate trip could theoretically be created in edge cases where vehicle status was not properly updated.  
+**Fix:** Add a check for any CREATED or STARTED trip for the same vehicle_id before creating a new one.  
+**Status:** 📋 Backlog — Phase 5  
+
+---
+
+### FE-004 — 401 interceptor navigation requires navigatorKey to be set
+**Severity:** 🟢 Low  
+**File:** `lib/core/network/dio_client.dart`, `lib/main.dart`  
+**Description:** The 401 interceptor in `DioClient` redirects to `LoginScreen` only if `DioClient.navigatorKey` is set. This is wired in `main.dart`'s `build()` method. If services use a local `Dio()` instance instead of `DioClient.instance`, the interceptor won't fire for them.  
+**Fix:** Migrate all services to use `DioClient.instance` for full 401 coverage. Currently each service still creates its own Dio() — the shared client is available but not yet used in existing services.  
+**Status:** 📋 Backlog — Phase 5 (shared client adoption)  
+
+---
+
 ## Phase 2 + Phase 3 Fix Tracker
 
 | Issue ID | Description | Priority | Status |
@@ -311,3 +340,7 @@ Cross-origin requests are allowed from any domain. In production this means any 
 | FE-001 | Frontend GET requests missing auth token | 🔴 Critical | ✅ Fixed in Phase 3 |
 | FE-002 | JWT role not decoded or persisted | 🟠 High | ✅ Fixed in Phase 3 |
 | FE-003 | App drawer shows all menus regardless of role | 🟠 High | ✅ Fixed in Phase 3 |
+| ATTEND-001 | Driver user_id link required for self-attendance | 🟡 Medium | 🔧 Partial Phase 4 |
+| FE-004 | 401 interceptor — services use local Dio, not shared | 🟢 Low | 📋 Phase 5 |
+| P4-TRIPS | DRIVER sees all company trips, not own only | 🟠 High | ✅ Fixed in Phase 4 |
+| P4-ATTEND | No attendance module in codebase | 🔴 Critical | ✅ Added in Phase 4 |

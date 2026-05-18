@@ -1,8 +1,8 @@
 # Test Checklist — Tipper Management ERP
 
-**Version:** 2.1.0  
+**Version:** 3.0.0  
 **Last Updated:** 2026-05-18  
-**Phase:** System Stabilization — Phase 3 RBAC + Multi-Tenant  
+**Phase:** System Stabilization — Phase 4 Operational Workflow  
 
 ---
 
@@ -242,3 +242,70 @@ Mark each item: ✅ Pass | ❌ Fail | ⏭️ Skip | 🔄 Retest
 | P3-21 | Role badge shown in drawer header | Correct role_name displayed (e.g. "MANAGER") | |
 | P3-22 | Logout clears role | After logout and re-login as different role, drawer reflects new role | |
 | P3-23 | Token expiry → make GET request | DioError raised — user should be redirected to login (manual step; 401 interceptor Phase 4) | |
+
+---
+
+## 16. Phase 4 Regression Tests (Attendance + DRIVER Scope)
+
+### Backend — Driver Attendance API
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P4-01 | `POST /attendance/punch-in` with MANAGER token + `driver_id` | 201, driver status=AVAILABLE | |
+| P4-02 | `POST /attendance/punch-in` duplicate (already punched in today) | 409 Conflict | |
+| P4-03 | `POST /attendance/punch-in` — driver already completed shift today | 409 Conflict | |
+| P4-04 | `POST /attendance/punch-out` with MANAGER token + `driver_id` | 200, punch_out set, is_active=False | |
+| P4-05 | `POST /attendance/punch-out` — driver is ON_TRIP | 409 — complete trip first | |
+| P4-06 | `POST /attendance/punch-out` — no active shift for driver | 404 Not Found | |
+| P4-07 | `GET /attendance/today` with SUPERVISOR token | Returns today's attendance records | |
+| P4-08 | `GET /attendance/today` — cross-company token | Returns only own company records | |
+| P4-09 | `GET /attendance/` with MANAGER token | Full history returned | |
+| P4-10 | `GET /attendance/` with DRIVER token | 403 — use /me endpoint | |
+| P4-11 | `GET /attendance/me` with DRIVER token (no user_id link) | 404 or empty (no driver profile) | |
+| P4-12 | `GET /attendance/me` with DRIVER token (user_id linked) | Returns own attendance history | |
+| P4-13 | `GET /dashboard/stats` — `drivers_on_duty` field | Returns count of active shifts today | |
+| P4-14 | Punch in driver → check dashboard | `drivers_on_duty` incremented | |
+| P4-15 | Punch out driver → check dashboard | `drivers_on_duty` decremented | |
+
+### Backend — DRIVER-Scoped Trip Filtering
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P4-16 | `GET /trips/` with DRIVER token (user_id linked to driver) | Returns only this driver's trips | |
+| P4-17 | `GET /trips/` with DRIVER token (no user_id link) | Returns empty list | |
+| P4-18 | `GET /trips/` with SUPERVISOR token | Returns all company trips | |
+
+### Backend — Driver Model Phase 4
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P4-19 | `POST /drivers/` with `user_id` in body | Driver created with user_id set | |
+| P4-20 | `PUT /drivers/{id}` with `user_id` in body | Driver updated, user_id linked | |
+| `GET /drivers/{id}` | Response includes `user_id` field | |
+
+### Frontend — Attendance Screen
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P4-21 | Open Attendance screen as DRIVER (no punch-in today) | "Not yet on duty" card with Punch In button | |
+| P4-22 | DRIVER taps Punch In | Record created, card switches to ON DUTY | |
+| P4-23 | DRIVER taps Punch Out | Shift ends, duration shown | |
+| P4-24 | Open Attendance screen as SUPERVISOR | Today's full company list shown | |
+| P4-25 | SUPERVISOR taps "Punch In Driver" + enters driver_id | Driver punched in, list refreshes | |
+| P4-26 | SUPERVISOR taps Punch Out on active card | Confirm dialog → punch out | |
+| P4-27 | Attendance menu item visible to DRIVER in drawer | Menu item "Attendance" shown | |
+| P4-28 | Attendance menu item visible to SUPERVISOR in drawer | Menu item "Attendance" shown | |
+
+### Frontend — Dashboard Attendance Row
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P4-29 | Open dashboard — "Attendance Today" row visible | Shows: On Duty, Available, On Trip, Off Duty pills | |
+| P4-30 | Punch in a driver → refresh dashboard | `On Duty` count incremented | |
+
+### Frontend — 401 Interceptor
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P4-31 | Use expired token → make any authenticated request | App redirects to login screen | |
+| P4-32 | Redirected to login → login with valid credentials | Works normally, new token stored | |

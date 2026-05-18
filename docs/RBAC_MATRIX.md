@@ -1,8 +1,8 @@
 # RBAC Matrix — Tipper Management ERP
 
-**Version:** 2.1.0  
+**Version:** 3.0.0  
 **Last Updated:** 2026-05-18  
-**Phase:** System Stabilization — Phase 3 Complete  
+**Phase:** System Stabilization — Phase 4 Complete  
 
 ---
 
@@ -41,6 +41,8 @@ Defined in `app/core/permissions.py` as `Permission(str, Enum)`:
 | `VIEW_FINANCE` | `view_finance` | View financial data |
 | `MANAGE_EXPENSES` | `manage_expenses` | Add/delete trip expenses |
 | `MANAGE_SETTINGS` | `manage_settings` | Modify company settings |
+| `VIEW_ATTENDANCE` | `view_attendance` | View attendance records |
+| `MANAGE_ATTENDANCE` | `manage_attendance` | Punch in / punch out drivers |
 
 ---
 
@@ -64,6 +66,8 @@ Defined in `app/core/permissions.py` as `Permission(str, Enum)`:
 | VIEW_FINANCE | ✅ | ✅ | ❌ | ❌ |
 | MANAGE_EXPENSES | ✅ | ✅ | ✅ | ✅ |
 | MANAGE_SETTINGS | ✅ | ❌ | ❌ | ❌ |
+| VIEW_ATTENDANCE | ✅ | ✅ | ✅ | ✅ |
+| MANAGE_ATTENDANCE | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -108,6 +112,11 @@ Defined in `app/core/permissions.py` as `Permission(str, Enum)`:
 | DELETE | `/trips/{trip_id}/expenses/{id}` | MANAGE_EXPENSES |
 | GET | `/dashboard/stats` | VIEW_DASHBOARD |
 | GET | `/admin/dashboard` | Legacy: role_id == 1 (admin_api.py) |
+| POST | `/attendance/punch-in` | MANAGE_ATTENDANCE |
+| POST | `/attendance/punch-out` | MANAGE_ATTENDANCE |
+| GET | `/attendance/me` | VIEW_ATTENDANCE (DRIVER own only) |
+| GET | `/attendance/today` | VIEW_ATTENDANCE |
+| GET | `/attendance/` | VIEW_ATTENDANCE (MANAGER+) |
 
 ---
 
@@ -139,12 +148,12 @@ bool get _canViewMasterData =>   // MANAGER, SUPER_ADMIN only
     _Role.masterDataRoles.contains(_roleName);
 ```
 
-| Role | Dashboard | Trips | Allocation | Vehicles/Drivers/Routes |
-|---|---|---|---|---|
-| DRIVER | ✅ | ✅ | ❌ hidden | ❌ hidden |
-| SUPERVISOR | ✅ | ✅ | ✅ | ❌ hidden |
-| MANAGER | ✅ | ✅ | ✅ | ✅ |
-| SUPER_ADMIN | ✅ | ✅ | ✅ | ✅ |
+| Role | Dashboard | Trips | Attendance | Allocation | Vehicles/Drivers/Routes |
+|---|---|---|---|---|---|
+| DRIVER | ✅ | ✅ (own only) | ✅ (self) | ❌ hidden | ❌ hidden |
+| SUPERVISOR | ✅ | ✅ | ✅ (company) | ✅ | ❌ hidden |
+| MANAGER | ✅ | ✅ | ✅ (company) | ✅ | ✅ |
+| SUPER_ADMIN | ✅ | ✅ | ✅ (company) | ✅ | ✅ |
 
 ### Permission Check (dependencies.py)
 
@@ -179,7 +188,7 @@ def check_permission(user_role: str, required_permission: Permission) -> bool:
 | Frontend auth tokens missing | All GET requests sent without Bearer token | 🔴 Critical | ✅ Fixed Phase 3 |
 | Frontend role not persisted | JWT role_name not decoded or stored after login | 🟠 High | ✅ Fixed Phase 3 |
 | Drawer shows all items to all roles | No role-based menu visibility | 🟠 High | ✅ Fixed Phase 3 |
-| No 401 interceptor in Dio | Expired tokens do not redirect to login screen | 🟡 Medium | 📋 Phase 4 |
+| No 401 interceptor in Dio | Expired tokens do not redirect to login screen | 🟡 Medium | ✅ Fixed Phase 4 (DioClient) |
 
 ---
 
