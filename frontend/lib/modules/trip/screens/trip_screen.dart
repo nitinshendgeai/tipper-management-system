@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/api_error.dart';
 import '../models/trip_model.dart';
 import '../services/trip_service.dart';
 import '../widgets/trip_card.dart';
@@ -38,26 +39,31 @@ class _TripScreenState extends State<TripScreen>
     super.dispose();
   }
 
+  /// Single API call — all tab futures are derived views of the same Future.
+  /// Phase 8 (TRIP-001): was 4 separate API calls (getTrips × 4); now 1.
   void _loadAll() {
     setState(() {
-      _allFuture = _tripService.getTrips();
+      final all = _tripService.getTrips();
 
-      // Active = CREATED + STARTED
-      _activeFuture =
-          Future.wait([
-            _tripService.getTrips(status: 'CREATED'),
-            _tripService.getTrips(status: 'STARTED'),
-          ]).then(
-            (results) => [...results[0], ...results[1]]
-              ..sort(
-                (a, b) => (b.createdAt ?? DateTime(0)).compareTo(
-                  a.createdAt ?? DateTime(0),
-                ),
-              ),
-          );
+      _allFuture = all;
 
-      _completedFuture = _tripService.getTrips(status: 'COMPLETED');
-      _cancelledFuture = _tripService.getTrips(status: 'CANCELLED');
+      _activeFuture = all.then(
+        (trips) => trips
+            .where((t) => t.isActive)
+            .toList()
+          ..sort(
+            (a, b) => (b.createdAt ?? DateTime(0))
+                .compareTo(a.createdAt ?? DateTime(0)),
+          ),
+      );
+
+      _completedFuture = all.then(
+        (trips) => trips.where((t) => t.isCompleted).toList(),
+      );
+
+      _cancelledFuture = all.then(
+        (trips) => trips.where((t) => t.isCancelled).toList(),
+      );
     });
   }
 
@@ -178,24 +184,15 @@ class _TripScreenState extends State<TripScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to start: $e'),
+            content: Text(
+              ApiError.extract(e, fallback: 'Failed to start trip. Please try again.'),
+            ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
         );
       }
     }
-  }
-
-  String _parseError(Object e, String fallback) {
-    final msg = e.toString();
-    if (msg.contains('401')) return 'Unauthorized — please login again.';
-    if (msg.contains('403')) return 'Permission denied.';
-    if (msg.contains('409')) return 'Conflict — check trip status.';
-    if (msg.contains('SocketException') || msg.contains('Connection refused')) {
-      return 'Cannot reach server.';
-    }
-    return fallback;
   }
 
   @override
@@ -287,7 +284,7 @@ class _TripScreenState extends State<TripScreen>
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _parseError(snapshot.error!, 'Unknown error'),
+                    ApiError.extract(snapshot.error!, fallback: 'Unknown error'),
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.grey[600]),
                   ),
