@@ -1,8 +1,8 @@
 # Known Issues — Tipper Management ERP
 
-**Version:** 4.0.0  
+**Version:** 5.0.0  
 **Last Updated:** 2026-05-19  
-**Phase:** Analytics + Dashboard Intelligence + AI Foundation — Phase 5 Complete  
+**Phase:** Production Hardening + Performance + Mobile Readiness — Phase 6 Complete  
 
 ---
 
@@ -23,14 +23,8 @@
 **Severity:** 🔴 Critical  
 **File:** `app/api/auth_api.py` — `login()`  
 **Description:** The login endpoint queries `User` by email alone with no `company_id` filter. In a multi-tenant system where two companies can have a user with the same email address, this returns the first database match, potentially authenticating the user into the wrong tenant.  
-**The code even documents this limitation:**
-```python
-# For multi-tenant users, email is scoped per company so we look up
-# by email alone (the first match). In a fully tenant-aware login the
-# client would also supply company_id; for now we match on email.
-```
-**Fix:** Login request must include `company_id` (or a company slug) and the DB query must filter `WHERE email=? AND company_id=?`.  
-**Status:** 🔧 Identified — Fix in Phase 2
+**Fix:** Added optional `company_slug` field to `LoginRequest`. When provided, the backend resolves the company by case-insensitive name match and scopes the user query to `company_id`. Flutter login screen now shows a Company Name field that passes `company_slug` to the API.  
+**Status:** ✅ Fixed in Phase 6
 
 ---
 
@@ -309,17 +303,17 @@ Cross-origin requests are allowed from any domain. In production this means any 
 **Severity:** 🟡 Medium  
 **File:** `backend/app/api/trip_api.py` — `create_trip()`  
 **Description:** The system checks vehicle status (must not be ON_TRIP or MAINTENANCE), and auto-fetches driver from active assignment. However, if a vehicle has status ASSIGNED but there's already a CREATED/STARTED trip for it, a duplicate trip could theoretically be created in edge cases where vehicle status was not properly updated.  
-**Fix:** Add a check for any CREATED or STARTED trip for the same vehicle_id before creating a new one.  
-**Status:** 📋 Backlog — Phase 5  
+**Fix:** Added defensive check querying for any CREATED or STARTED trip on the same `vehicle_id` before creating a new one. Returns 409 if duplicate found.  
+**Status:** ✅ Fixed in Phase 6  
 
 ---
 
 ### FE-004 — 401 interceptor navigation requires navigatorKey to be set
 **Severity:** 🟢 Low  
 **File:** `lib/core/network/dio_client.dart`, `lib/main.dart`  
-**Description:** The 401 interceptor in `DioClient` redirects to `LoginScreen` only if `DioClient.navigatorKey` is set. This is wired in `main.dart`'s `build()` method. If services use a local `Dio()` instance instead of `DioClient.instance`, the interceptor won't fire for them.  
-**Fix:** Migrate all services to use `DioClient.instance` for full 401 coverage. Currently each service still creates its own Dio() — the shared client is available but not yet used in existing services.  
-**Status:** 📋 Backlog — Phase 5 (shared client adoption)  
+**Description:** The 401 interceptor in `DioClient` redirects to `LoginScreen` only if `DioClient.navigatorKey` is set. This is wired in `main.dart`'s `build()` method. Previously each service created its own `Dio()` instance, bypassing the interceptor.  
+**Fix:** Migrated all 9 service files (trip, vehicle, driver, route, allocation, attendance, dashboard, trip_expense, route_intelligence) to use `DioClient.instance` and `DioClient.authOptions()`. The 401 interceptor now covers all authenticated calls.  
+**Status:** ✅ Fixed in Phase 6  
 
 ---
 
@@ -328,18 +322,18 @@ Cross-origin requests are allowed from any domain. In production this means any 
 ### ANLT-001 — Analytics N+1 queries on vehicle/driver stats
 **Severity:** 🟡 Medium  
 **Files:** `backend/app/services/analytics_service.py` — `get_vehicle_trip_stats()`, `get_all_drivers_performance()`  
-**Description:** Both functions issue individual trip queries for each vehicle/driver in a loop. For fleets with 50+ vehicles/drivers this produces N+1 DB round-trips. Under current scale (early SaaS) this is acceptable, but will degrade as data grows.  
-**Fix:** Refactor to use GROUP BY aggregation queries that retrieve all vehicles/drivers in a single query.  
-**Status:** 📋 Backlog — Phase 6
+**Description:** Both functions issued individual trip queries for each vehicle/driver in a loop. For fleets with 50+ vehicles/drivers this produced N+1 DB round-trips.  
+**Fix:** Rewrote both functions using SQLAlchemy GROUP BY aggregations. Vehicle stats: 2 queries total regardless of fleet size. Driver stats: 4 queries total (trip counts with `case()`, expense totals, attendance shifts, driver list).  
+**Status:** ✅ Fixed in Phase 6
 
 ---
 
 ### ANLT-002 — Alert detection scans all vehicles/drivers without pagination
 **Severity:** 🟡 Medium  
 **File:** `backend/app/services/alert_service.py` — `_detect_inactive_vehicles()`, `_detect_inactive_drivers()`  
-**Description:** These detectors load all AVAILABLE vehicles/drivers into memory and then query each one individually for recent trips. For large fleets this is memory-intensive.  
-**Fix:** Rewrite as a single SQL LEFT JOIN query with date filter, returning only those with no recent trips.  
-**Status:** 📋 Backlog — Phase 6
+**Description:** These detectors loaded all AVAILABLE vehicles/drivers into memory and then queried each one individually for recent trips.  
+**Fix:** Rewrote both detectors using SQLAlchemy NOT EXISTS correlated subqueries. Single DB round-trip per detector regardless of fleet size.  
+**Status:** ✅ Fixed in Phase 6
 
 ---
 
@@ -352,12 +346,68 @@ Cross-origin requests are allowed from any domain. In production this means any 
 
 ---
 
+### FE-006 — All service files use raw Dio() instead of DioClient.instance
+**Severity:** 🟠 High  
+**Files:** All 9 service files in `frontend/lib/modules/`  
+**Description:** Every service class created its own `Dio()` instance and duplicated `_authOptions()` locally. This meant the shared 401 interceptor in `DioClient` never fired for any service call, so token expiry caused silent 401 errors instead of redirecting the user to login.  
+**Fix:** Migrated all services to `DioClient.instance` and `DioClient.authOptions()`. Removed duplicate `_authOptions()` methods. Added `ApiError.extract()` utility at `lib/core/utils/api_error.dart` to replace scattered string-match error parsers with a single, consistent extractor that reads the server's `detail` field.  
+**Status:** ✅ Fixed in Phase 6
+
+---
+
 ### FE-005 — Dashboard Phase 5 KPI fields default to 0 if old backend
 **Severity:** 🟢 Low  
 **File:** `frontend/lib/modules/dashboard/models/dashboard_stats_model.dart`  
 **Description:** Phase 5 KPI fields (tripsToday, revenueToday, etc.) are Optional with default 0 in the Flutter model. If the backend is an older deployment that doesn't return these fields, the dashboard will silently show 0 for all Phase 5 KPIs rather than showing an error.  
 **Fix:** Acceptable. After Railway deployment is updated, all fields will be populated. No action needed.  
 **Status:** 📋 Self-resolving on deployment
+
+---
+
+## Phase 6 Issues Added
+
+### PERF-001 — Missing DB indexes on high-frequency query columns
+**Severity:** 🟠 High  
+**File:** `backend/app/db/bootstrap.py` — `repair_existing_schema()`  
+**Description:** All multi-tenant tables lacked indexes on `company_id`, `trip_status`, `trip_date`, and composite columns used in dashboard and analytics queries. With growing data this causes full-table scans on every request.  
+**Fix:** Added 15 `CREATE INDEX IF NOT EXISTS` statements in `repair_existing_schema()` covering: per-table company_id, composite (company_id, status), composite (company_id, trip_date), trip_status, trip_date, (driver_id, shift_date), and (vehicle_id, is_active) for assignment lookups.  
+**Status:** ✅ Fixed in Phase 6
+
+---
+
+### BIZ-003 — Driver license_number unique constraint is global (not per-company)
+**Severity:** 🟠 High  
+**File:** `backend/app/db/bootstrap.py`  
+**Description:** The `license_number` column had a global UNIQUE constraint, preventing two companies from registering drivers with the same license number (valid across companies in different regions).  
+**Fix:** Added `DO $$` block in bootstrap to create `uq_drivers_company_license_number` composite unique constraint on `(company_id, license_number)`, replacing the global unique.  
+**Status:** ✅ Fixed in Phase 6
+
+---
+
+### BIZ-004 — Vehicle vehicle_number unique constraint is global (not per-company)
+**Severity:** 🟠 High  
+**File:** `backend/app/db/bootstrap.py`  
+**Description:** Same as BIZ-003 — `vehicle_number` had a global UNIQUE constraint.  
+**Fix:** Added `uq_vehicles_company_vehicle_number` composite unique on `(company_id, vehicle_number)`.  
+**Status:** ✅ Fixed in Phase 6
+
+---
+
+### LOG-001 — No structured logging — all debug output via print()
+**Severity:** 🟡 Medium  
+**File:** `backend/app/main.py`, all API files  
+**Description:** Backend used `print()` statements. No log levels, no structured format, no stdout routing for Railway log visibility.  
+**Fix:** Added `logging.config.dictConfig()` in `main.py` with a console handler (ISO timestamp, level, logger name, message). All `print()` calls in startup replaced with `logger.info()`. Trip lifecycle events (CREATED, STARTED, COMPLETED, CANCELLED) emit structured `logger.info()` lines with vehicle, driver, and company context.  
+**Status:** ✅ Fixed in Phase 6
+
+---
+
+### ERR-001 — Unhandled exceptions leak Python stack traces to API consumers
+**Severity:** 🟠 High  
+**File:** `backend/app/main.py`  
+**Description:** Unhandled exceptions in any endpoint returned raw FastAPI 500 responses that could expose internal stack traces, module paths, or sensitive variable names.  
+**Fix:** Added `@app.exception_handler(Exception)` global handler that logs the full traceback server-side but returns a clean JSON 500 `{"detail": "An unexpected server error occurred.", "path": "..."}` to the client.  
+**Status:** ✅ Fixed in Phase 6
 
 ---
 
@@ -382,7 +432,16 @@ Cross-origin requests are allowed from any domain. In production this means any 
 | FE-004 | 401 interceptor — services use local Dio, not shared | 🟢 Low | 📋 Phase 5 |
 | P4-TRIPS | DRIVER sees all company trips, not own only | 🟠 High | ✅ Fixed in Phase 4 |
 | P4-ATTEND | No attendance module in codebase | 🔴 Critical | ✅ Added in Phase 4 |
-| ANLT-001 | Analytics N+1 queries on vehicle/driver stats | 🟡 Medium | 📋 Phase 6 |
-| ANLT-002 | Alert detection scans all vehicles/drivers in memory | 🟡 Medium | 📋 Phase 6 |
+| ANLT-001 | Analytics N+1 queries on vehicle/driver stats | 🟡 Medium | ✅ Fixed in Phase 6 (GROUP BY) |
+| ANLT-002 | Alert detection scans all vehicles/drivers in memory | 🟡 Medium | ✅ Fixed in Phase 6 (NOT EXISTS) |
 | ANLT-003 | Driver self-stats requires user_id link | 🟡 Medium | 🔧 Same as ATTEND-001 |
 | FE-005 | Phase 5 KPI fields default to 0 on old backend | 🟢 Low | 📋 Self-resolving on deploy |
+| AUTH-001 | Login email-only lookup (cross-tenant risk) | 🔴 Critical | ✅ Fixed in Phase 6 (company_slug) |
+| ATTEND-002 | No duplicate active trip prevention | 🟡 Medium | ✅ Fixed in Phase 6 |
+| FE-004 | Services use local Dio() — 401 interceptor bypassed | 🟠 High | ✅ Fixed in Phase 6 |
+| FE-006 | Scattered string-match error parsers | 🟡 Medium | ✅ Fixed in Phase 6 (ApiError.extract) |
+| PERF-001 | Missing DB indexes on company_id / trip_status / trip_date | 🟠 High | ✅ Fixed in Phase 6 |
+| BIZ-003 | license_number unique constraint is global not per-company | 🟠 High | ✅ Fixed in Phase 6 |
+| BIZ-004 | vehicle_number unique constraint is global not per-company | 🟠 High | ✅ Fixed in Phase 6 |
+| LOG-001 | No structured logging — print() only | 🟡 Medium | ✅ Fixed in Phase 6 |
+| ERR-001 | Stack traces leak in 500 responses | 🟠 High | ✅ Fixed in Phase 6 |

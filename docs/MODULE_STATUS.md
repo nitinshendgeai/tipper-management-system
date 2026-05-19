@@ -1,8 +1,8 @@
 # Module Status — Tipper Management ERP
 
-**Version:** 4.0.0  
+**Version:** 5.0.0  
 **Last Updated:** 2026-05-19  
-**Phase:** Analytics + Dashboard Intelligence + AI Foundation — Phase 5 Complete  
+**Phase:** Production Hardening + Performance + Mobile Readiness — Phase 6 Complete  
 
 ---
 
@@ -28,7 +28,7 @@
 | Tenant Context | `app/core/tenant.py` | ✅ Working | contextvars-based, async-safe per-request isolation |
 | Permissions | `app/core/permissions.py` | ✅ Working | Clean enum-based RBAC with ROLE_PERMISSIONS dict |
 | DB Session | `app/db/session.py` | ✅ Working | pool_pre_ping=True, autoflush=False |
-| Bootstrap | `app/db/bootstrap.py` | ⚠️ Partial | Functions defined but **NOT called from startup**. Schema creation and column repairs are skipped at runtime. |
+| Bootstrap | `app/db/bootstrap.py` | ✅ Working | Called from startup. Phase 6 adds 15 performance indexes + per-company unique constraints (BIZ-003, BIZ-004). |
 | DB Init | `app/db/init_db.py` | ⚠️ Partial | `init_db()` defined but **never called** from `main.py` |
 | Seed Data | `app/db/seed.py` | ⚠️ Partial | Runs on every startup. Idempotent for roles/admin user. Seeds legacy single-tenant data only (no company_id). |
 | Tenant Queries | `app/db/tenant_queries.py` | ✅ Working | `filter_by_company()` correctly filters by TenantContext company_id |
@@ -37,14 +37,14 @@
 
 | Module | File | Status | Notes |
 |---|---|---|---|
-| Authentication | `app/api/auth_api.py` | ⚠️ Partial | Login works. `/auth/me` uses legacy `get_current_user` (email-only, no tenant isolation). Login does email-only lookup (no company_id filter). |
+| Authentication | `app/api/auth_api.py` | ⚠️ Partial | Login works. Phase 6: optional `company_slug` scopes login to tenant (AUTH-001 fixed). `/auth/me` still uses legacy `get_current_user` (email-only). |
 | Company Management | `app/api/company_api.py` | ✅ Working | Registration, duplicate check, default roles/settings, admin user creation all functional |
 | Vehicle Master | `app/api/vehicle_api.py` | ✅ Working | Full CRUD with tenant isolation and permission checks |
 | Driver Master | `app/api/driver_api.py` | ✅ Working | Full CRUD with tenant isolation and permission checks |
 | Route Master | `app/api/route_api.py` | ✅ Working | Full CRUD with tenant isolation and permission checks |
 | Shift Allocation | `app/api/allocation_api.py` | ✅ Working | Create, list, release assignments with vehicle/driver status sync |
 | Route Intelligence | `app/api/route_intelligence_api.py` | ⚠️ Partial | Google Maps integration works when key present. Fallback formula uses pseudo-random (SHA256 seed) — not real coordinates. |
-| Trip Operations | `app/api/trip_api.py` | ✅ Working | Full lifecycle: CREATE → START → COMPLETE/CANCEL. FSM enforced (status transition checks). Status syncs to vehicle/driver. |
+| Trip Operations | `app/api/trip_api.py` | ✅ Working | Full lifecycle: CREATE → START → COMPLETE/CANCEL. FSM enforced. Phase 6: duplicate active trip check (ATTEND-002), structured logging for all lifecycle events. |
 | Trip Expenses | `app/api/trip_expense_api.py` | ✅ Working | Add/list/delete expenses per trip with tenant isolation |
 | Dashboard Analytics | `app/api/dashboard_api.py` | ✅ Working | All counters, financials, utilisation %, plus Phase 5 today/month KPIs. Company-scoped. |
 | Analytics API | `app/api/analytics_api.py` | ✅ Working | Phase 5: /analytics/operational, /driver/me, /fleet, /alerts, /supervisor/snapshot |
@@ -73,14 +73,14 @@
 
 | Service | File | Status | Notes |
 |---|---|---|---|
-| Analytics Service | `services/analytics_service.py` | ✅ Working | Pure functions: trip counts/financials, fleet utilization, driver performance, attendance, supervisor snapshot |
-| Alert Service | `services/alert_service.py` | ✅ Working | Stateless detectors: overdue trips, excessive expenses, low attendance, inactive vehicles/drivers, high cancellations |
+| Analytics Service | `services/analytics_service.py` | ✅ Working | Pure functions: trip counts/financials, fleet utilization, driver performance, attendance, supervisor snapshot. Phase 6: GROUP BY aggregations replace N+1 loops (ANLT-001). |
+| Alert Service | `services/alert_service.py` | ✅ Working | Stateless detectors: overdue trips, excessive expenses, low attendance, inactive vehicles/drivers, high cancellations. Phase 6: NOT EXISTS subqueries replace per-entity scans (ANLT-002). |
 
 ### Schemas (Pydantic)
 
 | Schema File | Status | Notes |
 |---|---|---|
-| `schemas/auth_schema.py` | ✅ Working | LoginRequest, TokenResponse |
+| `schemas/auth_schema.py` | ✅ Working | LoginRequest (Phase 6: added optional `company_slug`), TokenResponse |
 | `schemas/company_schema.py` | ✅ Working | Register, Response, Detail |
 | `schemas/vehicle_schema.py` | ✅ Working | CRUD schemas |
 | `schemas/driver_schema.py` | ✅ Working | CRUD schemas |
@@ -97,13 +97,13 @@
 
 | Module | Status | Notes |
 |---|---|---|
-| HTTP Client (Dio) | ✅ Working | dio ^5.9.2 configured |
+| HTTP Client (Dio) | ✅ Working | Phase 6: all 9 services migrated to `DioClient.instance`. 401 interceptor now covers all authenticated calls. |
 | Secure Token Storage | ✅ Working | flutter_secure_storage ^10.1.0 |
 | State Management | ✅ Working | Provider ^6.1.5+1 |
 | Navigation | ✅ Working | go_router ^17.2.3 |
 | Platform Support | ✅ Working | iOS, Android, macOS, Windows, Linux, Web |
-
-> **Note:** Full Flutter lib/ structure not audited in this phase. Frontend internals to be documented in Phase 3.
+| Error Handling Utility | ✅ Working | Phase 6: `lib/core/utils/api_error.dart` — `ApiError.extract()` reads server `detail` field, with HTTP status and network error fallbacks. Used by trip, attendance, and create screens. |
+| Login Screen | ✅ Working | Phase 6: added Company Name field; passes `company_slug` to backend for tenant-scoped login (AUTH-001). |
 
 ---
 
@@ -122,8 +122,8 @@
 
 | Category | Total | ✅ Working | ⚠️ Partial | ❌ Broken | 🔒 Legacy |
 |---|---|---|---|---|---|
-| API Routers | 13 | 9 | 2 | 1 | 1 |
+| API Routers | 13 | 10 | 2 | 0 | 1 |
 | Models | 12 | 10 | 1 | 0 | 1 |
-| Core Modules | 8 | 4 | 3 | 0 | 1 |
+| Core Modules | 9 | 6 | 2 | 0 | 1 |
 | Schemas | 11 | 11 | 0 | 0 | 0 |
 | Services | 2 | 2 | 0 | 0 | 0 |
