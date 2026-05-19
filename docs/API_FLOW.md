@@ -1,7 +1,8 @@
 # API Flow — Tipper Management ERP
 
-**Version:** 4.0.0  
+**Version:** 5.0.0  
 **Last Updated:** 2026-05-19  
+**Phase:** Full ERP Validation + Stabilization — Phase 7 Complete  
 **Base URL (Production):** `https://tipper-management-system.up.railway.app`  
 **Docs URL:** `https://tipper-management-system.up.railway.app/docs`
 
@@ -137,7 +138,7 @@ Body (POST/PUT): {
 POST /allocations/
 Body: { vehicle_id, driver_id, shift_date, remarks }
 Effect: vehicle.status → ASSIGNED, driver.status → AVAILABLE
-Permission: MANAGE_VEHICLES (or similar)
+Permission: MANAGE_TRIPS
 
 GET /allocations/active    → Active assignments only
 GET /allocations/          → All assignments (history)
@@ -155,6 +156,8 @@ Effect: is_active=False, vehicle.status → AVAILABLE, driver.status → OFF_DUT
 
 ```
 POST /route-intelligence/calculate
+Permission: CREATE_TRIPS (Phase 7 SEC-002 fix — was public, now requires auth)
+Headers: Authorization: Bearer <token>
 Body: { source_location, destination_location }
 
 Response: {
@@ -166,7 +169,8 @@ Response: {
   source: "google_maps" | "formula_estimate"
 }
 
-No auth required on this endpoint (public).
+Available to: SUPERVISOR, MANAGER, SUPER_ADMIN (CREATE_TRIPS permission).
+DRIVER role is blocked (no CREATE_TRIPS permission).
 ```
 
 ---
@@ -371,7 +375,7 @@ Response: SupervisorSnapshot {
 | GET /drivers/ | ✅ | ✅ | ✅ | ❌ |
 | POST /routes/ | ✅ | ✅ | ❌ | ❌ |
 | GET /routes/ | ✅ | ✅ | ✅ | ❌ |
-| POST /allocations/ | ✅ | ✅ | ❌ | ❌ |
+| POST /allocations/ | ✅ | ✅ | ✅ | ❌ |
 | POST /trips/ | ✅ | ✅ | ✅ | ❌ |
 | GET /trips/ | ✅ | ✅ | ✅ | ✅ |
 | PUT /trips/{id}/start | ✅ | ✅ | ✅ | ❌ |

@@ -1,8 +1,8 @@
 # RBAC Matrix — Tipper Management ERP
 
-**Version:** 4.0.0  
+**Version:** 5.0.0  
 **Last Updated:** 2026-05-19  
-**Phase:** Analytics + Dashboard Intelligence + AI Foundation — Phase 5 Complete  
+**Phase:** Full ERP Validation + Stabilization — Phase 7 Complete  
 
 ---
 
@@ -78,7 +78,7 @@ Defined in `app/core/permissions.py` as `Permission(str, Enum)`:
 | POST | `/companies/register` | None (public) |
 | POST | `/auth/login` | None (public) |
 | GET | `/auth/me` | Any valid JWT (tenant-aware) |
-| POST | `/route-intelligence/calculate` | None (public) |
+| POST | `/route-intelligence/calculate` | CREATE_TRIPS (Phase 7: was public — SEC-002) |
 | POST | `/vehicles/` | MANAGE_VEHICLES |
 | GET | `/vehicles/` | VIEW_VEHICLES |
 | GET | `/vehicles/{id}` | VIEW_VEHICLES |
@@ -94,13 +94,13 @@ Defined in `app/core/permissions.py` as `Permission(str, Enum)`:
 | GET | `/routes/{id}` | VIEW_ROUTES |
 | PUT | `/routes/{id}` | MANAGE_ROUTES |
 | DELETE | `/routes/{id}` | MANAGE_ROUTES |
-| POST | `/allocations/` | MANAGE_VEHICLES |
+| POST | `/allocations/` | MANAGE_TRIPS (Phase 7: was MANAGE_VEHICLES — RBAC-007) |
 | GET | `/allocations/active` | VIEW_VEHICLES |
 | GET | `/allocations/` | VIEW_VEHICLES |
 | GET | `/allocations/{id}` | VIEW_VEHICLES |
 | GET | `/allocations/vehicle/{id}` | VIEW_VEHICLES |
 | GET | `/allocations/driver/{id}` | VIEW_VEHICLES |
-| PUT | `/allocations/{id}/release` | MANAGE_VEHICLES |
+| PUT | `/allocations/{id}/release` | MANAGE_TRIPS (Phase 7: was MANAGE_VEHICLES — RBAC-007) |
 | POST | `/trips/` | CREATE_TRIPS |
 | GET | `/trips/` | VIEW_TRIPS |
 | GET | `/trips/{id}` | VIEW_TRIPS |
@@ -186,14 +186,16 @@ def check_permission(user_role: str, required_permission: Permission) -> bool:
 
 | Gap | Description | Severity | Status |
 |---|---|---|---|
-| Admin endpoint uses legacy role_id=1 | `/admin/dashboard` uses `RoleChecker([1])` not RBAC | 🟡 Medium | 📋 Phase 4 |
-| No MANAGE_ALLOCATIONS permission | Allocation endpoints reuse MANAGE_VEHICLES — semantically incorrect | 🟢 Low | 📋 Phase 4 |
-| No user management API | `MANAGE_USERS` permission exists but no `/users/` endpoint | 🟡 Medium | 📋 Phase 4 |
+| Admin endpoint uses legacy role_id=1 | `/admin/dashboard` uses `RoleChecker([1])` not RBAC | 🟡 Medium | 📋 Phase 8 backlog |
+| No user management API | `MANAGE_USERS` permission exists but no `/users/` endpoint | 🟡 Medium | 📋 Phase 8 backlog |
 | `/auth/me` fixed in Phase 2 | Now uses `get_current_tenant_user` for proper isolation | ✅ Fixed | ✅ Phase 2 |
 | Frontend auth tokens missing | All GET requests sent without Bearer token | 🔴 Critical | ✅ Fixed Phase 3 |
 | Frontend role not persisted | JWT role_name not decoded or stored after login | 🟠 High | ✅ Fixed Phase 3 |
 | Drawer shows all items to all roles | No role-based menu visibility | 🟠 High | ✅ Fixed Phase 3 |
 | No 401 interceptor in Dio | Expired tokens do not redirect to login screen | 🟡 Medium | ✅ Fixed Phase 4 (DioClient) |
+| SUPERVISOR blocked from operational workflow | MANAGE_TRIPS missing from SUPERVISOR — start/complete/cancel/allocate all 403 | 🔴 Critical | ✅ Fixed Phase 7 (RBAC-007) |
+| Route intelligence endpoint unauthenticated | POST /route-intelligence/calculate had zero Depends() — fully public | 🔴 Critical | ✅ Fixed Phase 7 (SEC-002) |
+| Allocation used MANAGE_VEHICLES instead of MANAGE_TRIPS | Semantically incorrect; SUPERVISOR couldn't create/release allocations | 🟠 High | ✅ Fixed Phase 7 (RBAC-007) |
 
 ---
 

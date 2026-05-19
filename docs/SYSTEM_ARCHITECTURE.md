@@ -1,8 +1,8 @@
 # System Architecture — Tipper Management ERP
 
-**Version:** 2.0.0  
-**Last Updated:** 2026-05-17  
-**Phase:** System Stabilization  
+**Version:** 3.0.0  
+**Last Updated:** 2026-05-19  
+**Phase:** Full ERP Validation + Stabilization — Phase 7 Complete  
 **Status:** Production-deployed (Railway)
 
 ---
@@ -164,26 +164,41 @@ Client                          FastAPI Backend
 
 ---
 
-## Startup Lifecycle
+## Startup Lifecycle (Phase 6 — Zero-DB Design)
 
 ```
 Railway starts uvicorn
        │
        ▼
-FastAPI app initializes
+GET /health registered — responds 200 immediately
        │
        ▼
-@app.on_event("startup")
+@app.on_event("startup") fires
+       └─► launches daemon thread "db-init" — returns immediately (zero DB work in startup)
        │
-       ├─ Base.metadata.create_all(bind=engine)
-       │   Creates tables for all registered models
+       ▼
+Railway healthcheck: GET /health → 200 in <1ms ✅ DEPLOY SUCCEEDS
        │
-       └─ seed_data()
-           Creates legacy auth.roles (5 roles)
-           Creates admin@tipper.com user (legacy, no company_id)
+       ▼  (background — concurrent with live traffic)
+_run_background_init():
+       ├── 1/4 ensure_database_schemas()   CREATE SCHEMA IF NOT EXISTS ×4
+       ├── 2/4 Base.metadata.create_all()  CREATE TABLE IF NOT EXISTS ×N
+       ├── 3/4 repair_existing_schema()    ALTER TABLE + CREATE INDEX + DO blocks
+       └── 4/4 seed_data()                 Legacy roles + admin@tipper.com
 ```
 
-> **Note:** `ensure_database_schemas()` and `repair_existing_schema()` are imported in `main.py` but not called from startup. This is a known issue — see `docs/KNOWN_ISSUES.md`.
+Monitor via `GET /health`:
+```json
+{
+  "status": "ok",
+  "db_init_complete": true,
+  "db_init_error": null,
+  "db_init_steps_done": ["schemas", "tables", "repair_schema", "seed_data"],
+  "db_init_elapsed_s": 4.2
+}
+```
+
+**Why `repair_existing_schema()` exists:** `Base.metadata.create_all()` never modifies existing tables. Pre-existing Railway databases need the repair step to backfill missing `company_id` columns (7 tables) and create performance indexes (15 indexes). All SQL is idempotent — safe on fresh and existing databases. Phase 7 (DB-004): `ALTER TABLE ADD COLUMN IF NOT EXISTS` statements placed before all `CREATE INDEX` statements to ensure column exists before indexing.
 
 ---
 
@@ -235,13 +250,14 @@ Route handler executes
 ## Deployment Architecture
 
 ```
-GitHub (main branch)
+GitHub (staging-release branch)
     │
     ▼ auto-deploy on push
 Railway.io
     │  Builder: NIXPACKS
     │  Start:   cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    │  Health:  GET /docs (Swagger UI)
+    │  Health:  GET /health   ← zero DB calls, responds <1ms (Phase 6: was /docs)
+    │  Timeout: 120s          (Phase 6: was 300s — reduced because /health is instant)
     │  Restart: ON_FAILURE
     │
     ├── FastAPI App
