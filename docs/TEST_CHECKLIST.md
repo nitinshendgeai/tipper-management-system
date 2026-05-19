@@ -1,8 +1,8 @@
 # Test Checklist — Tipper Management ERP
 
-**Version:** 4.0.0  
-**Last Updated:** 2026-05-19  
-**Phase:** Analytics + Dashboard Intelligence + AI Foundation — Phase 5 Complete  
+**Version:** 7.0.0
+**Last Updated:** 2026-05-19
+**Phase:** Production Hardening + Full ERP Validation — Phase 7 Active
 
 ---
 
@@ -22,8 +22,11 @@ Mark each item: ✅ Pass | ❌ Fail | ⏭️ Skip | 🔄 Retest
 |---|---|---|---|
 | H-01 | GET `/docs` | Swagger UI loads (200) | |
 | H-02 | GET `/openapi.json` | JSON schema loads (200) | |
-| H-03 | Railway health check path `/docs` | 200 within 300s timeout | |
-| H-04 | App restarts on failure | Railway ON_FAILURE policy active | |
+| H-03 | GET `/health` | `{"status":"ok"}` in <1ms — no DB required | |
+| H-04 | GET `/health` after startup | `db_init_complete: true`, all 4 steps in `db_init_steps_done` | |
+| H-05 | Railway healthcheck path | `/health` (not `/docs`) — configured in `railway.toml` | |
+| H-06 | App restarts on failure | Railway ON_FAILURE policy active | |
+| H-07 | Cold-start: Postgres not ready | App still serves /health (200) — DB init retries in background | |
 
 ---
 
@@ -396,3 +399,135 @@ Mark each item: ✅ Pass | ❌ Fail | ⏭️ Skip | 🔄 Retest
 | P5-41 | Company A and B both have trips — GET /analytics/operational | Each sees only own metrics | |
 | P5-42 | Company A vehicle inactive — Company B should NOT see alert | Company B alerts only for own fleet | |
 | P5-43 | Concurrent requests from two companies | Correct tenant context preserved per request | |
+
+---
+
+## Phase 6 Tests — Production Hardening
+
+### Deployment + Healthcheck
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P6-01 | GET `/health` immediately after cold start | `{"status":"ok"}` in <1ms before DB ready | |
+| P6-02 | GET `/health` after ~10s | `db_init_complete: true`, all 4 steps done | |
+| P6-03 | Railway Logs → filter `[bg-init]` | 4 step lines with timing, final "complete in X.Xs" | |
+| P6-04 | Railway healthcheck tab | Status shows green / healthy | |
+
+### Auth — Company-Scoped Login (AUTH-001)
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P6-05 | POST `/auth/login` with valid `company_slug` | 200, token scoped to correct company | |
+| P6-06 | POST `/auth/login` with wrong `company_slug` | 401 "Invalid company name, email, or password" | |
+| P6-07 | POST `/auth/login` without `company_slug` | 200, backward-compatible (email-only lookup) | |
+| P6-08 | Flutter login screen — Company Name field present | Text field visible on login screen | |
+| P6-09 | Two companies, same email — login with slug | Returns correct tenant user only | |
+
+### Duplicate Trip Guard (ATTEND-002)
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P6-10 | Create trip, then create another for same vehicle (status=CREATED) | 409 "Vehicle already has an active trip" | |
+| P6-11 | Start trip, then try create another for same vehicle | 409 Conflict | |
+
+### Performance — N+1 Fixes
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P6-12 | GET `/analytics/fleet` with 20 vehicles | Single response, no timeout | |
+| P6-13 | GET `/analytics/alerts` with 20+ vehicles/drivers | Fast response, no N+1 loop | |
+
+### Flutter — DioClient Migration
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P6-14 | Use expired token in app → make any request | Redirected to login screen automatically | |
+| P6-15 | Server returns `{"detail": "Vehicle not found"}` on error | Flutter snackbar shows that exact message | |
+| P6-16 | Network offline → make any request | "Cannot reach the server" message shown | |
+
+### DB Indexes (PERF-001)
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P6-17 | GET `/health` after deploy — `repair_schema` in steps_done | Confirms indexes were created | |
+| P6-18 | `SELECT * FROM pg_indexes WHERE tablename='trips'` | 5+ indexes visible including composite | |
+
+---
+
+## Phase 7 Tests — Full ERP Validation
+
+### RBAC Fix — SUPERVISOR Lifecycle (RBAC-007)
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P7-01 | SUPERVISOR token → `POST /allocations/` | 200, assignment created (was 403 before fix) | |
+| P7-02 | SUPERVISOR token → `PUT /trips/{id}/start` | 200, trip started (was 403 before fix) | |
+| P7-03 | SUPERVISOR token → `PUT /trips/{id}/complete` | 200, trip completed (was 403 before fix) | |
+| P7-04 | SUPERVISOR token → `PUT /trips/{id}/cancel` | 200, trip cancelled (was 403 before fix) | |
+| P7-05 | SUPERVISOR token → `PUT /allocations/{id}/release` | 200, assignment released (was 403 before fix) | |
+| P7-06 | DRIVER token → `PUT /trips/{id}/start` | 403 Forbidden (DRIVER still blocked correctly) | |
+
+### Security — Route Intelligence Auth (SEC-002)
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P7-07 | `POST /route-intelligence/calculate` without token | 403 Forbidden (was 200 before fix) | |
+| P7-08 | `POST /route-intelligence/calculate` with SUPERVISOR token | 200, route calculated | |
+| P7-09 | `POST /route-intelligence/calculate` with DRIVER token | 403 Forbidden (needs CREATE_TRIPS) | |
+
+### Security — Exception Leak Fix (TENANT-004)
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P7-10 | `POST /companies/register` triggers DB error | 500 with generic message, no Python trace | |
+
+### Full Operational Scenario — Scenario 1
+
+| # | Test | Description | Status |
+|---|---|---|---|
+| SC1-01 | Register company | POST /companies/register → 201 | |
+| SC1-02 | Login as admin | POST /auth/login with company_slug → token | |
+| SC1-03 | Create driver | POST /drivers/ as MANAGER → 201 | |
+| SC1-04 | Create vehicle | POST /vehicles/ as MANAGER → 201 | |
+| SC1-05 | Assign driver to vehicle | POST /allocations/ as SUPERVISOR → 201, vehicle=ASSIGNED | |
+| SC1-06 | Get route estimate | POST /route-intelligence/calculate as SUPERVISOR → distance/diesel | |
+| SC1-07 | Create trip | POST /trips/ as SUPERVISOR with vehicle_id → 201, driver auto-fetched | |
+| SC1-08 | Start trip | PUT /trips/{id}/start as SUPERVISOR → STARTED, vehicle=ON_TRIP | |
+| SC1-09 | Add expense | POST /trips/{id}/expenses as SUPERVISOR → expense logged | |
+| SC1-10 | Complete trip | PUT /trips/{id}/complete as SUPERVISOR → COMPLETED, vehicle=ASSIGNED | |
+| SC1-11 | Check dashboard | GET /dashboard/stats → trips_completed incremented | |
+| SC1-12 | Release allocation | PUT /allocations/{id}/release as SUPERVISOR → AVAILABLE | |
+
+### Full Operational Scenario — Scenario 2 (Multi-Tenant Isolation)
+
+| # | Test | Description | Status |
+|---|---|---|---|
+| SC2-01 | Register Company A and Company B | Two separate registrations | |
+| SC2-02 | Login as Company A admin | Get token-A | |
+| SC2-03 | Login as Company B admin | Get token-B | |
+| SC2-04 | Create vehicle in Company A | Use token-A | |
+| SC2-05 | GET /vehicles/ with token-B | Returns 0 (Company A vehicle not visible) | |
+| SC2-06 | Create trip in Company A | Use token-A | |
+| SC2-07 | GET /trips/ with token-B | Returns 0 (Company A trip not visible) | |
+| SC2-08 | GET /dashboard/stats with token-A | Shows Company A counts only | |
+| SC2-09 | GET /dashboard/stats with token-B | Shows Company B counts only (different) | |
+| SC2-10 | Try to cancel Company A trip with token-B | 404 Not Found | |
+
+### Full Operational Scenario — Scenario 3 (RBAC Matrix)
+
+| # | Test | Role | Expected | Status |
+|---|---|---|---|---|
+| SC3-01 | POST `/vehicles/` | DRIVER | 403 | |
+| SC3-02 | POST `/vehicles/` | SUPERVISOR | 403 | |
+| SC3-03 | POST `/vehicles/` | MANAGER | 201 | |
+| SC3-04 | POST `/allocations/` | DRIVER | 403 | |
+| SC3-05 | POST `/allocations/` | SUPERVISOR | 201 | |
+| SC3-06 | PUT `/trips/{id}/start` | DRIVER | 403 | |
+| SC3-07 | PUT `/trips/{id}/start` | SUPERVISOR | 200 | |
+| SC3-08 | GET `/analytics/operational` | DRIVER | 403 | |
+| SC3-09 | GET `/analytics/operational` | SUPERVISOR | 403 | |
+| SC3-10 | GET `/analytics/operational` | MANAGER | 200 | |
+| SC3-11 | GET `/analytics/driver/me` | DRIVER | 200 | |
+| SC3-12 | GET `/analytics/driver/me` | MANAGER | 403 | |
+| SC3-13 | POST `/route-intelligence/calculate` | no token | 403 | |
+| SC3-14 | POST `/route-intelligence/calculate` | SUPERVISOR | 200 | |
