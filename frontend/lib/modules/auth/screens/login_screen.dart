@@ -13,7 +13,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final emailController = TextEditingController();
+  final companyController  = TextEditingController();
+  final emailController    = TextEditingController();
   final passwordController = TextEditingController();
 
   bool isLoading = false;
@@ -35,6 +36,10 @@ class _LoginScreenState extends State<LoginScreen> {
     final token = await authService.login(
       email: emailController.text.trim(),
       password: passwordController.text,
+      // Phase 6 (AUTH-001): pass company name so backend scopes login to tenant
+      companyName: companyController.text.trim().isEmpty
+          ? null
+          : companyController.text.trim(),
     );
 
     if (!mounted) return;
@@ -49,7 +54,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } else {
       setState(() {
         _errorMessage =
-            'Invalid email or password. Please check your credentials and try again.';
+            'Invalid company name, email, or password. Please check your credentials and try again.';
       });
     }
   }
@@ -58,6 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
+    companyController.dispose();
     emailController.dispose();
     passwordController.dispose();
     super.dispose();
@@ -120,6 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: 460,
                         child: _LoginCard(
                           formKey: _formKey,
+                          companyController: companyController,
                           emailController: emailController,
                           passwordController: passwordController,
                           isLoading: isLoading,
@@ -136,6 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       )
                     : _LoginCard(
                         formKey: _formKey,
+                        companyController: companyController,
                         emailController: emailController,
                         passwordController: passwordController,
                         isLoading: isLoading,
@@ -162,6 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
 class _LoginCard extends StatelessWidget {
   final GlobalKey<FormState> formKey;
+  final TextEditingController companyController;
   final TextEditingController emailController;
   final TextEditingController passwordController;
   final bool isLoading;
@@ -174,6 +183,7 @@ class _LoginCard extends StatelessWidget {
 
   const _LoginCard({
     required this.formKey,
+    required this.companyController,
     required this.emailController,
     required this.passwordController,
     required this.isLoading,
@@ -217,6 +227,28 @@ class _LoginCard extends StatelessWidget {
                 _ErrorBanner(message: errorMessage!),
                 const SizedBox(height: 20),
               ],
+
+              // ── Company name field (Phase 6: AUTH-001) ───────────────────
+              TextFormField(
+                controller: companyController,
+                keyboardType: TextInputType.text,
+                textInputAction: TextInputAction.next,
+                autocorrect: false,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Company Name',
+                  hintText: 'Acme Transport Pvt. Ltd.',
+                  prefixIcon: Icon(Icons.business_rounded),
+                  helperText: 'Enter your registered company name',
+                ),
+                validator: (v) {
+                  // Optional — we allow blank for backward compat (single-company setups)
+                  // but show a hint if they try to submit without it.
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 16),
 
               // ── Email field ──────────────────────────────────────────────
               TextFormField(

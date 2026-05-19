@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/utils/api_error.dart';
 import '../models/trip_model.dart';
 import '../models/trip_expense_model.dart';
 import '../services/trip_service.dart';
@@ -130,7 +131,7 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to start trip: $e'),
+            content: Text(ApiError.extract(e, fallback: 'Failed to start trip. Please try again.')),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -175,8 +176,8 @@ class _TripDetailScreenState extends State<TripDetailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to delete expense'),
+          SnackBar(
+            content: Text(ApiError.extract(e, fallback: 'Failed to delete expense.')),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),

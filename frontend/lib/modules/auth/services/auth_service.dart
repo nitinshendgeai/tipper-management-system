@@ -10,17 +10,30 @@ class AuthService {
 
   /// Authenticates the user and persists the JWT token on success.
   /// Returns the token string if successful, null otherwise.
+  ///
+  /// Phase 6 (AUTH-001): added optional [companyName] parameter.
+  /// When provided, login is scoped to that specific company — preventing
+  /// cross-tenant auth in multi-tenant mode. Safe to omit for backward compat.
   Future<String?> login({
     required String email,
     required String password,
+    String? companyName,
   }) async {
     print('[AuthService] login() called with email: $email');
     print('[AuthService] POST ${ApiConstants.baseUrl}/auth/login');
 
+    final Map<String, dynamic> payload = {
+      "email": email,
+      "password": password,
+    };
+    if (companyName != null && companyName.trim().isNotEmpty) {
+      payload["company_slug"] = companyName.trim();
+    }
+
     try {
       final response = await dio.post(
         '${ApiConstants.baseUrl}/auth/login',
-        data: {"email": email, "password": password},
+        data: payload,
       );
 
       print('[AuthService] Response status: ${response.statusCode}');

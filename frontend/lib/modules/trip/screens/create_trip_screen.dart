@@ -7,6 +7,7 @@ import '../../allocation/models/assignment_model.dart';
 import '../../route/models/route_model.dart';
 import '../../route/services/route_service.dart';
 
+import '../../../core/utils/api_error.dart';
 import '../services/trip_service.dart';
 import '../services/route_intelligence_service.dart';
 
@@ -241,7 +242,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_parseError(e)),
+            content: Text(ApiError.extract(e, fallback: 'Failed to create trip. Please try again.')),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -250,25 +251,6 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
-  }
-
-  String _parseError(Object e) {
-    final msg = e.toString();
-    if (msg.contains('401')) return 'Session expired — please login again.';
-    if (msg.contains('403')) return 'Permission denied.';
-    if (msg.contains('no active driver')) {
-      return 'Assign a driver to this vehicle first.';
-    }
-    if (msg.contains('ON_TRIP')) {
-      return 'Vehicle or driver is already on a trip.';
-    }
-    if (msg.contains('409')) {
-      return 'Conflict — check active trips or assignments.';
-    }
-    if (msg.contains('SocketException') || msg.contains('Connection refused')) {
-      return 'Cannot reach server — check your connection.';
-    }
-    return 'Failed to create trip. Please try again.';
   }
 
   // ─── Build ─────────────────────────────────────────────────────────────────

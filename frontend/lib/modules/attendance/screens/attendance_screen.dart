@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/storage/token_storage.dart';
+import '../../../core/utils/api_error.dart';
 import '../models/attendance_model.dart';
 import '../services/attendance_service.dart';
 
@@ -204,19 +205,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     ));
   }
 
-  String _parseError(Object e) {
-    final msg = e.toString();
-    if (msg.contains('401')) return 'Session expired — please login again.';
-    if (msg.contains('403')) return 'Permission denied.';
-    if (msg.contains('409')) {
-      if (msg.contains('already punched in')) return 'Already punched in today.';
-      if (msg.contains('completed a shift')) return 'Shift already completed today.';
-      if (msg.contains('ON_TRIP')) return 'Cannot punch out — driver is ON_TRIP.';
-    }
-    if (msg.contains('404')) return 'Driver not found. Check driver ID.';
-    if (msg.contains('SocketException')) return 'Cannot reach server.';
-    return 'Action failed. Please try again.';
-  }
+  // Phase 6 (FE-006): replaced custom string-match parser with ApiError.extract().
+  // Server "detail" messages (e.g. "already punched in today") are surfaced directly.
+  String _parseError(Object e) => ApiError.extract(e, fallback: 'Action failed. Please try again.');
 
   Future<int?> _showDriverIdDialog(String title) async {
     return showDialog<int>(
