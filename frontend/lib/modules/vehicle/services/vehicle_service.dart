@@ -1,29 +1,18 @@
-import 'package:dio/dio.dart';
-
 import '../../../core/constants/api_constants.dart';
-import '../../../core/storage/token_storage.dart';
+import '../../../core/network/dio_client.dart';
 import '../models/vehicle_model.dart';
 
+/// Phase 6 (FE-006): migrated from raw Dio() to DioClient.instance.
 class VehicleService {
-  final Dio _dio = Dio();
-
-  /// Builds Dio request options with the stored Bearer token.
-  Future<Options> _authOptions() async {
-    final token = await TokenStorage.getToken();
-
-    return Options(
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    );
-  }
-
   // ─── READ ────────────────────────────────────────────────────────────────────
 
   /// Fetches all active vehicles from the backend.
   Future<List<VehicleModel>> getVehicles() async {
-    final response = await _dio.get('${ApiConstants.baseUrl}/vehicles/');
+    final options = await DioClient.authOptions();
+    final response = await DioClient.instance.get(
+      '${ApiConstants.baseUrl}/vehicles/',
+      options: options,
+    );
 
     final List data = response.data as List;
 
@@ -36,9 +25,9 @@ class VehicleService {
 
   /// Creates a new vehicle. Requires admin JWT token.
   Future<VehicleModel> createVehicle(Map<String, dynamic> payload) async {
-    final options = await _authOptions();
+    final options = await DioClient.authOptions();
 
-    final response = await _dio.post(
+    final response = await DioClient.instance.post(
       '${ApiConstants.baseUrl}/vehicles/',
       data: payload,
       options: options,
@@ -54,9 +43,9 @@ class VehicleService {
     int vehicleId,
     Map<String, dynamic> payload,
   ) async {
-    final options = await _authOptions();
+    final options = await DioClient.authOptions();
 
-    final response = await _dio.put(
+    final response = await DioClient.instance.put(
       '${ApiConstants.baseUrl}/vehicles/$vehicleId',
       data: payload,
       options: options,
@@ -69,9 +58,9 @@ class VehicleService {
 
   /// Soft-deletes a vehicle by ID. Requires admin JWT token.
   Future<void> deleteVehicle(int vehicleId) async {
-    final options = await _authOptions();
+    final options = await DioClient.authOptions();
 
-    await _dio.delete(
+    await DioClient.instance.delete(
       '${ApiConstants.baseUrl}/vehicles/$vehicleId',
       options: options,
     );

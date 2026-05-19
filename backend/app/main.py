@@ -1,5 +1,9 @@
-from fastapi import FastAPI
+import logging
+import logging.config
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.db.bootstrap import ensure_database_schemas, repair_existing_schema
 from app.db.seed import seed_data
@@ -20,6 +24,8 @@ from app.api.trip_api import router as trip_router
 from app.api.trip_expense_api import router as trip_expense_router
 
 from app.api.dashboard_api import router as dashboard_router
+from app.api.attendance_api import router as attendance_router
+from app.api.analytics_api import router as analytics_router
 
 from app.models.company import Company, CompanySettings, UserRole
 from app.models.user import User
@@ -33,8 +39,43 @@ from app.models.trip import Trip
 from app.models.trip_expense import TripExpense
 
 from app.models.assignment import DriverVehicleAssignment
+from app.models.attendance import DriverAttendance
 
 
+
+# ─── Logging configuration ────────────────────────────────────────────────────
+# Phase 6: structured logging for production debugging.
+# Logs go to stdout so Railway picks them up in the Logs tab.
+# Do NOT log credentials, passwords, or tokens here.
+
+logging.config.dictConfig({
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "default": {
+            "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "default",
+            "stream": "ext://sys.stdout",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+    "loggers": {
+        # Quieten noisy libraries
+        "uvicorn.access": {"level": "WARNING"},
+        "sqlalchemy.engine": {"level": "WARNING"},
+    },
+})
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Tipper ERP API",
@@ -52,13 +93,48 @@ app.add_middleware(
 )
 
 
+# ─── Global exception handler ─────────────────────────────────────────────────
+# Phase 6: catch unhandled exceptions and return a clean JSON 500
+# instead of leaking Python stack traces to API consumers.
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(
+        "Unhandled exception on %s %s: %s",
+        request.method, request.url.path, repr(exc),
+        exc_info=True,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "An unexpected server error occurred. "
+                      "The operations team has been notified.",
+            "path": str(request.url.path),
+        },
+    )
+
+
 @app.on_event("startup")
 def startup():
-    print("[startup] Startup event triggered")
-    print("[startup] Creating database schemas via Base.metadata.create_all()")
+    logger.info("=== Tipper ERP API — startup sequence starting ===")
+
+    # Step 1: Ensure PostgreSQL schemas exist before table creation
+    logger.info("[startup] Ensuring PostgreSQL schemas: auth, master, operations, tenant")
+    ensure_database_schemas(engine)
+
+    # Step 2: Create all tables from ORM models
+    logger.info("[startup] Running Base.metadata.create_all()")
     Base.metadata.create_all(bind=engine)
-    print("[startup] Database schemas created — calling seed_data()")
+
+    # Step 3: Apply safe column repairs and Phase 6 indexes
+    logger.info("[startup] Running repair_existing_schema() — column backfill + indexes")
+    repair_existing_schema(engine)
+
+    # Step 4: Seed legacy single-tenant roles and admin user
+    logger.info("[startup] Calling seed_data()")
     seed_data()
+
+    logger.info("=== Tipper ERP API — startup complete. Routes active. ===")
 
 
 # ─── Company Registration (public) ───────────────────────────────────────────
@@ -133,10 +209,28 @@ app.include_router(
 )
 
 
+# ─── Attendance ───────────────────────────────────────────────────────────────
+
+app.include_router(
+    attendance_router,
+    prefix="/attendance",
+    tags=["Driver Attendance"]
+)
+
+
 # ─── Dashboard ────────────────────────────────────────────────────────────────
 
 app.include_router(
     dashboard_router,
     prefix="/dashboard",
     tags=["Dashboard Analytics"]
+)
+
+
+# ─── Analytics ────────────────────────────────────────────────────────────────
+
+app.include_router(
+    analytics_router,
+    prefix="/analytics",
+    tags=["Analytics & Intelligence"]
 )

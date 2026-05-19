@@ -1,22 +1,10 @@
-import 'package:dio/dio.dart';
-
 import '../../../core/constants/api_constants.dart';
-import '../../../core/storage/token_storage.dart';
+import '../../../core/network/dio_client.dart';
 import '../models/trip_model.dart';
 
+/// Phase 6 (FE-006): migrated from raw Dio() to DioClient.instance so the
+/// shared 401 interceptor auto-redirects to login on token expiry.
 class TripService {
-  final Dio _dio = Dio();
-
-  Future<Options> _authOptions() async {
-    final token = await TokenStorage.getToken();
-    return Options(
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    );
-  }
-
   // ─── READ ──────────────────────────────────────────────────────────────────
 
   /// Fetches trips. Optional filters: status (CREATED/STARTED/COMPLETED/CANCELLED),
@@ -31,9 +19,11 @@ class TripService {
     if (vehicleId != null) params['vehicle_id'] = vehicleId;
     if (driverId != null) params['driver_id'] = driverId;
 
-    final response = await _dio.get(
+    final options = await DioClient.authOptions();
+    final response = await DioClient.instance.get(
       '${ApiConstants.baseUrl}/trips/',
       queryParameters: params.isNotEmpty ? params : null,
+      options: options,
     );
 
     final List data = response.data as List;
@@ -44,15 +34,19 @@ class TripService {
 
   /// Get a single trip by ID.
   Future<TripModel> getTrip(int tripId) async {
-    final response = await _dio.get('${ApiConstants.baseUrl}/trips/$tripId');
+    final options = await DioClient.authOptions();
+    final response = await DioClient.instance.get(
+      '${ApiConstants.baseUrl}/trips/$tripId',
+      options: options,
+    );
     return TripModel.fromJson(response.data as Map<String, dynamic>);
   }
 
   // ─── CREATE ────────────────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> createTrip(Map<String, dynamic> payload) async {
-    final options = await _authOptions();
-    final response = await _dio.post(
+    final options = await DioClient.authOptions();
+    final response = await DioClient.instance.post(
       '${ApiConstants.baseUrl}/trips/',
       data: payload,
       options: options,
@@ -63,8 +57,8 @@ class TripService {
   // ─── START ─────────────────────────────────────────────────────────────────
 
   Future<TripModel> startTrip(int tripId, double startKm) async {
-    final options = await _authOptions();
-    final response = await _dio.put(
+    final options = await DioClient.authOptions();
+    final response = await DioClient.instance.put(
       '${ApiConstants.baseUrl}/trips/$tripId/start',
       data: {'start_km': startKm},
       options: options,
@@ -78,8 +72,8 @@ class TripService {
     int tripId,
     Map<String, dynamic> payload,
   ) async {
-    final options = await _authOptions();
-    final response = await _dio.put(
+    final options = await DioClient.authOptions();
+    final response = await DioClient.instance.put(
       '${ApiConstants.baseUrl}/trips/$tripId/complete',
       data: payload,
       options: options,
@@ -90,8 +84,8 @@ class TripService {
   // ─── CANCEL ────────────────────────────────────────────────────────────────
 
   Future<TripModel> cancelTrip(int tripId, {String? reason}) async {
-    final options = await _authOptions();
-    final response = await _dio.put(
+    final options = await DioClient.authOptions();
+    final response = await DioClient.instance.put(
       '${ApiConstants.baseUrl}/trips/$tripId/cancel',
       data: {'cancellation_reason': reason},
       options: options,

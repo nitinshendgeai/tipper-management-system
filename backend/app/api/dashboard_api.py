@@ -3,29 +3,31 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from app.db.session import SessionLocal
+from datetime import date as _date
 
 from app.models.vehicle import Vehicle, VehicleStatus
 from app.models.driver import Driver, DriverStatus
 from app.models.route import Route
 from app.models.trip import Trip, TripStatus
 from app.models.trip_expense import TripExpense
+from app.models.attendance import DriverAttendance, AttendanceStatus
 
 from app.schemas.dashboard_schema import DashboardStats
-from app.api.dependencies import require_permission
+from app.api.dependencies import require_permission, get_db
 from app.core.permissions import Permission
 from app.db.tenant_queries import filter_by_company
 
+# Phase 5 additions: time-windowed KPI helpers from analytics service
+from app.services.analytics_service import (
+    get_trip_counts_in_window,
+    get_trip_financials_in_window,
+    today_window,
+    month_window,
+)
+
+# Phase 2 fix (DB-001): get_db() removed from local definition — imported from dependencies
 
 router = APIRouter()
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @router.get(
@@ -57,6 +59,18 @@ def get_dashboard_stats(
     # ── Route count (scoped to company) ───────────────────────────────────────
 
     total_routes = filter_by_company(db.query(func.count(Route.id)), Route).filter(Route.is_active == True).scalar() or 0
+
+    # ── Attendance — drivers on duty today (scoped to company) ────────────────
+
+    drivers_on_duty = (
+        filter_by_company(db.query(func.count(DriverAttendance.id)), DriverAttendance)
+        .filter(
+            DriverAttendance.shift_date == _date.today(),
+            DriverAttendance.status == AttendanceStatus.PRESENT,
+            DriverAttendance.is_active == True,
+        )
+        .scalar() or 0
+    )
 
     # ── Trip lifecycle counts (scoped to company) ──────────────────────────────
 
@@ -94,6 +108,23 @@ def get_dashboard_stats(
         if active_fleet > 0 else 0.0
     )
 
+    # ── Phase 5: Today-scoped KPIs ────────────────────────────────────────────
+    company_id = None  # filter_by_company uses TenantContext internally
+    today_start, today_end = today_window()
+    month_start, month_end = month_window()
+
+    today_counts     = get_trip_counts_in_window(company_id, db, today_start, today_end)
+    today_financials = get_trip_financials_in_window(company_id, db, today_start, today_end)
+    month_financials = get_trip_financials_in_window(company_id, db, month_start, month_end)
+
+    # Completion rate across all tracked trips (completed vs total completed+cancelled)
+    settled = trips_completed + trips_cancelled
+    trip_completion_rate = round(trips_completed / settled * 100, 1) if settled > 0 else 0.0
+
+    # All-time averages across completed trips
+    avg_revenue_per_trip = round(total_revenue / trips_completed, 2) if trips_completed > 0 else 0.0
+    avg_diesel_per_trip  = round(total_diesel_used / trips_completed, 2) if trips_completed > 0 else 0.0
+
     return DashboardStats(
         total_vehicles=total_vehicles,
         total_drivers=total_drivers,
@@ -107,6 +138,7 @@ def get_dashboard_stats(
         drivers_available=drivers_available,
         drivers_on_trip=drivers_on_trip,
         drivers_off_duty=drivers_off_duty,
+        drivers_on_duty=drivers_on_duty,
 
         trips_total=trips_total,
         trips_created=trips_created,
@@ -119,4 +151,14 @@ def get_dashboard_stats(
         total_trip_expenses=total_trip_expenses,
 
         utilisation_pct=utilisation_pct,
+
+        # Phase 5 time-windowed KPIs
+        trips_today=today_counts["total"],
+        trips_completed_today=today_counts["completed"],
+        revenue_today=today_financials["total_revenue"],
+        revenue_this_month=month_financials["total_revenue"],
+
+        trip_completion_rate=trip_completion_rate,
+        avg_revenue_per_trip=avg_revenue_per_trip,
+        avg_diesel_per_trip=avg_diesel_per_trip,
     )

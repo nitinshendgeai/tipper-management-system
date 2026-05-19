@@ -1,29 +1,18 @@
-import 'package:dio/dio.dart';
-
 import '../../../core/constants/api_constants.dart';
-import '../../../core/storage/token_storage.dart';
+import '../../../core/network/dio_client.dart';
 import '../models/route_model.dart';
 
+/// Phase 6 (FE-006): migrated from raw Dio() to DioClient.instance.
 class RouteService {
-  final Dio _dio = Dio();
-
-  /// Builds Dio request options with the stored Bearer token.
-  Future<Options> _authOptions() async {
-    final token = await TokenStorage.getToken();
-
-    return Options(
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    );
-  }
-
   // ─── READ ────────────────────────────────────────────────────────────────
 
   /// Fetches all active routes from the backend.
   Future<List<RouteModel>> getRoutes() async {
-    final response = await _dio.get('${ApiConstants.baseUrl}/routes/');
+    final options = await DioClient.authOptions();
+    final response = await DioClient.instance.get(
+      '${ApiConstants.baseUrl}/routes/',
+      options: options,
+    );
 
     final List data = response.data as List;
 
@@ -36,9 +25,9 @@ class RouteService {
 
   /// Creates a new route. Requires admin JWT token.
   Future<RouteModel> createRoute(Map<String, dynamic> payload) async {
-    final options = await _authOptions();
+    final options = await DioClient.authOptions();
 
-    final response = await _dio.post(
+    final response = await DioClient.instance.post(
       '${ApiConstants.baseUrl}/routes/',
       data: payload,
       options: options,
@@ -54,9 +43,9 @@ class RouteService {
     int routeId,
     Map<String, dynamic> payload,
   ) async {
-    final options = await _authOptions();
+    final options = await DioClient.authOptions();
 
-    final response = await _dio.put(
+    final response = await DioClient.instance.put(
       '${ApiConstants.baseUrl}/routes/$routeId',
       data: payload,
       options: options,
@@ -69,9 +58,9 @@ class RouteService {
 
   /// Soft-deletes a route by ID. Requires admin JWT token.
   Future<void> deleteRoute(int routeId) async {
-    final options = await _authOptions();
+    final options = await DioClient.authOptions();
 
-    await _dio.delete(
+    await DioClient.instance.delete(
       '${ApiConstants.baseUrl}/routes/$routeId',
       options: options,
     );

@@ -1,6 +1,5 @@
-import 'package:dio/dio.dart';
-
 import '../../../core/constants/api_constants.dart';
+import '../../../core/network/dio_client.dart';
 
 class RouteCalculationResult {
   final String origin;
@@ -40,16 +39,18 @@ class RouteCalculationResult {
   }
 }
 
+/// Phase 6 (FE-006): migrated from raw Dio() to DioClient.instance.
 class RouteIntelligenceService {
-  final Dio _dio = Dio();
-
   Future<RouteCalculationResult> calculateRoute({
     required String origin,
     required String destination,
   }) async {
-    final response = await _dio.post(
+    // Route intelligence requires auth — backend enforces tenant isolation.
+    final options = await DioClient.authOptions();
+    final response = await DioClient.instance.post(
       '${ApiConstants.baseUrl}/route-intelligence/calculate',
       data: {'origin': origin, 'destination': destination, 'mode': 'driving'},
+      options: options,
     );
     return RouteCalculationResult.fromJson(
       response.data as Map<String, dynamic>,

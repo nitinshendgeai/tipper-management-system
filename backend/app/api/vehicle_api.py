@@ -6,8 +6,6 @@ from fastapi import (
 
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal
-
 from app.models.vehicle import Vehicle
 
 from app.schemas.vehicle_schema import (
@@ -16,23 +14,13 @@ from app.schemas.vehicle_schema import (
     VehicleResponse
 )
 
-from app.api.dependencies import get_current_tenant_user, require_permission
+from app.api.dependencies import get_current_tenant_user, require_permission, get_db
 from app.core.permissions import Permission
 from app.db.tenant_queries import filter_by_company
 
+# Phase 3 cleanup (DB-001): get_db() imported from dependencies — local copy removed
 
 router = APIRouter()
-
-
-def get_db():
-
-    db = SessionLocal()
-
-    try:
-        yield db
-
-    finally:
-        db.close()
 
 
 @router.post(
