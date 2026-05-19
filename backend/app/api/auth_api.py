@@ -1,12 +1,16 @@
+import logging
+
 from fastapi import (
     APIRouter,
     HTTPException,
     Depends
 )
 
+from sqlalchemy import func as sa_func
+
 from app.db.session import SessionLocal
 from app.models.user import User
-from app.models.company import UserRole
+from app.models.company import Company, UserRole
 
 from app.schemas.auth_schema import (
     LoginRequest,
@@ -20,6 +24,7 @@ from app.core.security import (
 
 from app.api.dependencies import get_current_tenant_user
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -31,29 +36,60 @@ def login(data: LoginRequest):
     """
     Authenticate a user and return a JWT access token.
 
-    Phase 2 note: Login currently matches by email only (no company_id filter).
-    This is a known limitation (AUTH-001) — safe only when email addresses are
-    globally unique across all tenants. Full tenant-aware login (with company slug)
-    is planned for Phase 3.
+    Phase 6 fix (AUTH-001): when `company_slug` (company name) is supplied in
+    the request body, the login is strictly scoped to that company — preventing
+    cross-tenant authentication in the event that two companies share a user email.
+    If `company_slug` is omitted the endpoint falls back to email-only lookup
+    for backward-compatibility with existing Flutter clients that haven't yet
+    been updated to send the company name.
     """
 
     db = SessionLocal()
     try:
-        user = db.query(User).filter(
+        # ── Resolve company scope when company_slug is provided ────────────────
+        company_id_filter = None
+        if data.company_slug:
+            company = db.query(Company).filter(
+                sa_func.lower(Company.company_name) == data.company_slug.strip().lower(),
+                Company.is_active == True,
+            ).first()
+            if not company:
+                logger.warning(
+                    "Login failed — unknown company_slug: %s (email: %s)",
+                    data.company_slug, data.email,
+                )
+                raise HTTPException(
+                    status_code=401,
+                    detail="Invalid company name, email, or password"
+                )
+            company_id_filter = company.id
+            logger.debug("Login: company resolved — %s (id=%s)", company.company_name, company.id)
+
+        # ── Lookup user — scoped to company when provided ──────────────────────
+        user_query = db.query(User).filter(
             User.email == data.email,
             User.is_active == True,
-        ).first()
+        )
+        if company_id_filter is not None:
+            user_query = user_query.filter(User.company_id == company_id_filter)
+
+        user = user_query.first()
 
         if not user:
+            logger.warning(
+                "Login failed — user not found (email: %s, company_slug: %s)",
+                data.email, data.company_slug or "<not provided>",
+            )
             raise HTTPException(
                 status_code=401,
                 detail="Invalid email or password"
             )
 
-        if not verify_password(
-            data.password,
-            user.password_hash
-        ):
+        if not verify_password(data.password, user.password_hash):
+            logger.warning(
+                "Login failed — wrong password (email: %s, company_id: %s)",
+                data.email, user.company_id,
+            )
             raise HTTPException(
                 status_code=401,
                 detail="Invalid email or password"
@@ -83,6 +119,11 @@ def login(data: LoginRequest):
             token_data["company_id"] = str(user.company_id)
 
         access_token = create_access_token(data=token_data)
+
+        logger.info(
+            "Login success — email=%s role=%s company_id=%s",
+            user.email, role_name, user.company_id,
+        )
 
         return {
             "access_token": access_token,
