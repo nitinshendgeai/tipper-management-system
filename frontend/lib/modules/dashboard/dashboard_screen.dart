@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/storage/token_storage.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_drawer.dart';
 import '../vehicle/screens/vehicle_screen.dart';
@@ -574,9 +575,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
 // ─── Welcome header ───────────────────────────────────────────────────────────
 
-class _WelcomeHeader extends StatelessWidget {
+/// Phase 8: Upgraded to StatefulWidget — loads user name from secure storage
+/// (persisted at login time from /auth/me) so the header is personalised
+/// without any additional API call on dashboard load.
+class _WelcomeHeader extends StatefulWidget {
   final bool isLoading;
   const _WelcomeHeader({required this.isLoading});
+
+  @override
+  State<_WelcomeHeader> createState() => _WelcomeHeaderState();
+}
+
+class _WelcomeHeaderState extends State<_WelcomeHeader> {
+  String? _displayName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadName();
+  }
+
+  Future<void> _loadName() async {
+    // Prefer stored full name; fall back to the local-part of the email.
+    final name = await TokenStorage.getName();
+    if (name != null && name.isNotEmpty) {
+      if (mounted) setState(() => _displayName = name.split(' ').first);
+      return;
+    }
+    final email = await TokenStorage.getEmail();
+    if (email != null && email.contains('@')) {
+      if (mounted) setState(() => _displayName = email.split('@').first);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -587,6 +617,8 @@ class _WelcomeHeader extends StatelessWidget {
         : hour < 17
             ? 'Good afternoon'
             : 'Good evening';
+
+    final titleLine = _displayName != null ? '$greeting, $_displayName' : greeting;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -612,7 +644,7 @@ class _WelcomeHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  greeting,
+                  titleLine,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.75),
                     fontSize: 13,
@@ -642,7 +674,7 @@ class _WelcomeHeader extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      isLoading ? 'Syncing data…' : 'Live data',
+                      widget.isLoading ? 'Syncing data…' : 'Live data',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.7),
                         fontSize: 12,
