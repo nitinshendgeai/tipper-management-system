@@ -11,11 +11,14 @@ Key design decisions:
   • All list responses return enriched TripListItem (vehicle_number, driver_name, etc.)
 """
 
+import logging
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+
+logger = logging.getLogger(__name__)
 
 from app.models.trip import Trip, TripStatus
 from app.models.trip_expense import TripExpense
@@ -147,6 +150,23 @@ def create_trip(
             detail=f"Vehicle {vehicle.vehicle_number} is under MAINTENANCE"
         )
 
+    # Phase 6 fix (ATTEND-002): defensive check for any CREATED or STARTED
+    # trip on this vehicle — prevents duplicates if vehicle.status was not
+    # properly synced (edge case on concurrent requests or previous crash).
+    active_trip = filter_by_company(db.query(Trip), Trip).filter(
+        Trip.vehicle_id == data.vehicle_id,
+        Trip.trip_status.in_([TripStatus.CREATED, TripStatus.STARTED]),
+    ).first()
+    if active_trip:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Vehicle {vehicle.vehicle_number} already has an active trip "
+                f"(#{active_trip.id}, status: {active_trip.trip_status}). "
+                f"Complete or cancel it before creating a new trip."
+            )
+        )
+
     # 2. Auto-fetch driver from active assignment (scoped to company)
     assignment = filter_by_company(
         db.query(DriverVehicleAssignment), DriverVehicleAssignment
@@ -210,6 +230,10 @@ def create_trip(
     db.commit()
     db.refresh(trip)
 
+    logger.info(
+        "Trip #%d CREATED — vehicle=%s driver=%s company=%s",
+        trip.id, vehicle.vehicle_number, driver.full_name, current_user.company_id,
+    )
     return trip
 
 
@@ -323,6 +347,14 @@ def start_trip(
     db.commit()
     db.refresh(trip)
 
+    logger.info(
+        "Trip #%d STARTED — vehicle=%s driver=%s start_km=%s company=%s",
+        trip.id,
+        vehicle.vehicle_number if vehicle else "?",
+        driver.full_name if driver else "?",
+        data.start_km,
+        trip.company_id,
+    )
     return _build_list_item(trip, db)
 
 
@@ -393,6 +425,15 @@ def complete_trip(
     db.commit()
     db.refresh(trip)
 
+    logger.info(
+        "Trip #%d COMPLETED — vehicle=%s driver=%s end_km=%s revenue=%.2f company=%s",
+        trip.id,
+        vehicle.vehicle_number if vehicle else "?",
+        driver.full_name if driver else "?",
+        data.end_km,
+        data.revenue_amount or 0.0,
+        trip.company_id,
+    )
     return _build_list_item(trip, db)
 
 
@@ -446,4 +487,12 @@ def cancel_trip(
     db.commit()
     db.refresh(trip)
 
+    logger.info(
+        "Trip #%d CANCELLED — vehicle=%s driver=%s reason=%r company=%s",
+        trip.id,
+        vehicle.vehicle_number if vehicle else "?",
+        driver.full_name if driver else "?",
+        data.cancellation_reason,
+        trip.company_id,
+    )
     return _build_list_item(trip, db)
