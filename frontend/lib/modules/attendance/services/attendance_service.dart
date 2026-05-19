@@ -1,33 +1,20 @@
-import 'package:dio/dio.dart';
-
 import '../../../core/constants/api_constants.dart';
-import '../../../core/storage/token_storage.dart';
+import '../../../core/network/dio_client.dart';
 import '../models/attendance_model.dart';
 
+/// Phase 6 (FE-006): migrated from raw Dio() to DioClient.instance so the
+/// shared 401 interceptor auto-redirects to login on token expiry.
 class AttendanceService {
-  final Dio _dio = Dio();
-
-  /// Builds Dio options with the stored Bearer token.
-  Future<Options> _authOptions() async {
-    final token = await TokenStorage.getToken();
-    return Options(
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    );
-  }
-
   // ─── PUNCH IN ────────────────────────────────────────────────────────────────
 
   /// Mark driver as PRESENT.
   /// [driverId] — required for SUPERVISOR/MANAGER; omit for DRIVER (auto-resolved
   /// if user_id is linked, otherwise pass own driver ID).
   Future<AttendanceModel> punchIn({int? driverId}) async {
-    final options = await _authOptions();
+    final options = await DioClient.authOptions();
     final body = driverId != null ? {'driver_id': driverId} : <String, dynamic>{};
 
-    final response = await _dio.post(
+    final response = await DioClient.instance.post(
       '${ApiConstants.baseUrl}/attendance/punch-in',
       data: body,
       options: options,
@@ -41,10 +28,10 @@ class AttendanceService {
   /// End driver shift.
   /// [driverId] — required for SUPERVISOR/MANAGER; omit for DRIVER.
   Future<AttendanceModel> punchOut({int? driverId}) async {
-    final options = await _authOptions();
+    final options = await DioClient.authOptions();
     final body = driverId != null ? {'driver_id': driverId} : <String, dynamic>{};
 
-    final response = await _dio.post(
+    final response = await DioClient.instance.post(
       '${ApiConstants.baseUrl}/attendance/punch-out',
       data: body,
       options: options,
@@ -57,9 +44,9 @@ class AttendanceService {
 
   /// Fetch today's attendance records (SUPERVISOR+ sees all; DRIVER sees own).
   Future<List<AttendanceModel>> getTodayAttendance() async {
-    final options = await _authOptions();
+    final options = await DioClient.authOptions();
 
-    final response = await _dio.get(
+    final response = await DioClient.instance.get(
       '${ApiConstants.baseUrl}/attendance/today',
       options: options,
     );
@@ -74,9 +61,9 @@ class AttendanceService {
 
   /// Fetch own attendance history — DRIVER role only.
   Future<List<AttendanceModel>> getMyAttendance() async {
-    final options = await _authOptions();
+    final options = await DioClient.authOptions();
 
-    final response = await _dio.get(
+    final response = await DioClient.instance.get(
       '${ApiConstants.baseUrl}/attendance/me',
       options: options,
     );
@@ -96,13 +83,13 @@ class AttendanceService {
     String? shiftDate,
     int? driverId,
   }) async {
-    final options = await _authOptions();
+    final options = await DioClient.authOptions();
 
     final queryParams = <String, dynamic>{};
     if (shiftDate != null) queryParams['shift_date'] = shiftDate;
     if (driverId != null) queryParams['driver_id'] = driverId;
 
-    final response = await _dio.get(
+    final response = await DioClient.instance.get(
       '${ApiConstants.baseUrl}/attendance/',
       queryParameters: queryParams.isNotEmpty ? queryParams : null,
       options: options,
