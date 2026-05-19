@@ -21,7 +21,7 @@ Current alert types:
 
 from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, exists, and_
 
 from app.models.trip import Trip, TripStatus
 from app.models.trip_expense import TripExpense
@@ -143,75 +143,99 @@ def _detect_low_attendance(company_id, db: Session) -> list[OperationalAlert]:
 
 
 def _detect_inactive_vehicles(company_id, db: Session) -> list[OperationalAlert]:
-    """Vehicles in AVAILABLE status with no trips in the last INACTIVE_DAYS days."""
+    """
+    Vehicles in AVAILABLE status with no trips in the last INACTIVE_DAYS days.
+
+    Phase 6 optimisation (ANLT-002): replaced N+1 per-vehicle queries with a
+    single NOT EXISTS correlated subquery — one DB round-trip for the whole fleet.
+    """
     cutoff = date.today() - timedelta(days=INACTIVE_DAYS)
 
-    available_vehicles = (
-        filter_by_company(db.query(Vehicle), Vehicle)
-        .filter(Vehicle.is_active == True, Vehicle.status == VehicleStatus.AVAILABLE)
-        .all()
-    )
-    alerts = []
-    for v in available_vehicles:
-        recent_trip = (
-            filter_by_company(db.query(Trip), Trip)
-            .filter(
-                Trip.vehicle_id == v.id,
+    # Subquery: does this vehicle have ANY trip in the cutoff window?
+    recent_trip_exists = (
+        exists()
+        .where(
+            and_(
+                Trip.vehicle_id == Vehicle.id,
                 Trip.trip_date >= cutoff,
             )
-            .first()
         )
-        if not recent_trip:
-            alerts.append(OperationalAlert(
-                alert_type=AlertType.INACTIVE_VEHICLE,
-                severity=AlertSeverity.LOW,
-                title="Inactive Vehicle",
-                message=(
-                    f"Vehicle {v.vehicle_number} has had no trips in the last {INACTIVE_DAYS} days "
-                    f"and is currently AVAILABLE."
-                ),
-                entity_type="vehicle",
-                entity_id=v.id,
-                entity_label=v.vehicle_number,
-                triggered_at=datetime.utcnow(),
-            ))
-    return alerts
+    )
+
+    inactive_vehicles = (
+        filter_by_company(db.query(Vehicle), Vehicle)
+        .filter(
+            Vehicle.is_active == True,
+            Vehicle.status == VehicleStatus.AVAILABLE,
+            ~recent_trip_exists,
+        )
+        .all()
+    )
+
+    return [
+        OperationalAlert(
+            alert_type=AlertType.INACTIVE_VEHICLE,
+            severity=AlertSeverity.LOW,
+            title="Inactive Vehicle",
+            message=(
+                f"Vehicle {v.vehicle_number} has had no trips in the last {INACTIVE_DAYS} days "
+                f"and is currently AVAILABLE."
+            ),
+            entity_type="vehicle",
+            entity_id=v.id,
+            entity_label=v.vehicle_number,
+            triggered_at=datetime.utcnow(),
+        )
+        for v in inactive_vehicles
+    ]
 
 
 def _detect_inactive_drivers(company_id, db: Session) -> list[OperationalAlert]:
-    """Drivers AVAILABLE with no trips in the last INACTIVE_DAYS days."""
+    """
+    Drivers AVAILABLE with no trips in the last INACTIVE_DAYS days.
+
+    Phase 6 optimisation (ANLT-002): replaced N+1 per-driver queries with a
+    single NOT EXISTS correlated subquery — one DB round-trip for the whole fleet.
+    """
     cutoff = date.today() - timedelta(days=INACTIVE_DAYS)
 
-    available_drivers = (
-        filter_by_company(db.query(Driver), Driver)
-        .filter(Driver.is_active == True, Driver.status == DriverStatus.AVAILABLE)
-        .all()
-    )
-    alerts = []
-    for d in available_drivers:
-        recent = (
-            filter_by_company(db.query(Trip), Trip)
-            .filter(
-                Trip.driver_id == d.id,
+    # Subquery: does this driver have ANY trip in the cutoff window?
+    recent_trip_exists = (
+        exists()
+        .where(
+            and_(
+                Trip.driver_id == Driver.id,
                 Trip.trip_date >= cutoff,
             )
-            .first()
         )
-        if not recent:
-            alerts.append(OperationalAlert(
-                alert_type=AlertType.INACTIVE_DRIVER,
-                severity=AlertSeverity.LOW,
-                title="Inactive Driver",
-                message=(
-                    f"Driver {d.full_name} has had no trips in the last {INACTIVE_DAYS} days "
-                    f"and is currently AVAILABLE."
-                ),
-                entity_type="driver",
-                entity_id=d.id,
-                entity_label=d.full_name,
-                triggered_at=datetime.utcnow(),
-            ))
-    return alerts
+    )
+
+    inactive_drivers = (
+        filter_by_company(db.query(Driver), Driver)
+        .filter(
+            Driver.is_active == True,
+            Driver.status == DriverStatus.AVAILABLE,
+            ~recent_trip_exists,
+        )
+        .all()
+    )
+
+    return [
+        OperationalAlert(
+            alert_type=AlertType.INACTIVE_DRIVER,
+            severity=AlertSeverity.LOW,
+            title="Inactive Driver",
+            message=(
+                f"Driver {d.full_name} has had no trips in the last {INACTIVE_DAYS} days "
+                f"and is currently AVAILABLE."
+            ),
+            entity_type="driver",
+            entity_id=d.id,
+            entity_label=d.full_name,
+            triggered_at=datetime.utcnow(),
+        )
+        for d in inactive_drivers
+    ]
 
 
 def _detect_high_cancellation(company_id, db: Session) -> list[OperationalAlert]:

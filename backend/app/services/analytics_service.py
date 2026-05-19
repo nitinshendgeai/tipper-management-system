@@ -18,7 +18,7 @@ Design principles:
 from datetime import date, datetime, timedelta
 from typing import Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, case
 
 from app.models.trip import Trip, TripStatus
 from app.models.trip_expense import TripExpense
@@ -209,7 +209,34 @@ def get_vehicle_trip_stats(
     """
     Per-vehicle trip summary in the given window.
     AI use: vehicle scoring, maintenance prediction.
+
+    Phase 6 optimisation (ANLT-001): replaced N+1 per-vehicle queries with a
+    single GROUP BY aggregation + one vehicle fetch — O(2) queries regardless
+    of fleet size.
     """
+    # ── Single GROUP BY query for all trip aggregates in window ───────────────
+    agg_rows = (
+        filter_by_company(
+            db.query(
+                Trip.vehicle_id,
+                func.count(Trip.id).label("total_trips"),
+                func.coalesce(func.sum(Trip.revenue_amount), 0.0).label("total_revenue"),
+                func.coalesce(func.sum(Trip.diesel_used), 0.0).label("total_diesel"),
+                func.coalesce(func.sum(Trip.end_km - Trip.start_km), 0.0).label("total_dist"),
+            ),
+            Trip,
+        )
+        .filter(
+            Trip.trip_date >= from_date,
+            Trip.trip_date <= to_date,
+            Trip.trip_status == TripStatus.COMPLETED,
+        )
+        .group_by(Trip.vehicle_id)
+        .all()
+    )
+    agg_by_vehicle = {r.vehicle_id: r for r in agg_rows}
+
+    # ── Single query for all active vehicles ──────────────────────────────────
     vehicles = (
         filter_by_company(db.query(Vehicle), Vehicle)
         .filter(Vehicle.is_active == True)
@@ -218,27 +245,18 @@ def get_vehicle_trip_stats(
 
     results = []
     for v in vehicles:
-        trips = (
-            filter_by_company(db.query(Trip), Trip)
-            .filter(
-                Trip.vehicle_id == v.id,
-                Trip.trip_date >= from_date,
-                Trip.trip_date <= to_date,
-                Trip.trip_status == TripStatus.COMPLETED,
-            )
-        )
-        count = trips.count()
-        revenue = float(trips.with_entities(func.coalesce(func.sum(Trip.revenue_amount), 0.0)).scalar() or 0.0)
-        diesel  = float(trips.with_entities(func.coalesce(func.sum(Trip.diesel_used), 0.0)).scalar() or 0.0)
-        dist    = float(trips.with_entities(func.coalesce(func.sum(Trip.end_km - Trip.start_km), 0.0)).scalar() or 0.0)
-
+        agg   = agg_by_vehicle.get(v.id)
+        count = int(agg.total_trips) if agg else 0
+        rev   = float(agg.total_revenue) if agg else 0.0
+        diesel = float(agg.total_diesel) if agg else 0.0
+        dist  = float(agg.total_dist) if agg else 0.0
         results.append({
             "vehicle_id": v.id,
             "vehicle_number": v.vehicle_number,
             "vehicle_type": getattr(v, "vehicle_type", "Tipper"),
             "total_trips": count,
             "total_distance_km": round(dist, 2),
-            "total_revenue": round(revenue, 2),
+            "total_revenue": round(rev, 2),
             "total_diesel_used": round(diesel, 2),
             "avg_trip_distance_km": round(dist / count, 2) if count > 0 else 0.0,
             "current_status": v.status,
@@ -348,17 +366,118 @@ def get_all_drivers_performance(
     """
     All drivers' performance summary in window.
     AI use: fleet driver ranking, incentive tier assignment.
+
+    Phase 6 optimisation (ANLT-001): replaced N×5 queries (one per driver per
+    metric) with 4 GROUP BY aggregation queries that cover the entire driver
+    fleet in a single pass — O(4) queries regardless of fleet size.
     """
+    # ── 1. Trip counts + revenue + distance grouped by driver_id ─────────────
+    trip_aggs = (
+        filter_by_company(
+            db.query(
+                Trip.driver_id,
+                func.count(Trip.id).label("total"),
+                func.sum(
+                    case((Trip.trip_status == TripStatus.COMPLETED, 1), else_=0)
+                ).label("completed"),
+                func.sum(
+                    case((Trip.trip_status == TripStatus.CANCELLED, 1), else_=0)
+                ).label("cancelled"),
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (Trip.trip_status == TripStatus.COMPLETED, Trip.revenue_amount),
+                            else_=None,
+                        )
+                    ),
+                    0.0,
+                ).label("revenue"),
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (Trip.trip_status == TripStatus.COMPLETED, Trip.end_km - Trip.start_km),
+                            else_=None,
+                        )
+                    ),
+                    0.0,
+                ).label("dist"),
+            ),
+            Trip,
+        )
+        .filter(Trip.trip_date >= from_date, Trip.trip_date <= to_date)
+        .group_by(Trip.driver_id)
+        .all()
+    )
+    agg_by_driver = {r.driver_id: r for r in trip_aggs}
+
+    # ── 2. Expense totals grouped by driver_id ────────────────────────────────
+    expense_aggs = (
+        filter_by_company(
+            db.query(
+                Trip.driver_id,
+                func.coalesce(func.sum(TripExpense.amount), 0.0).label("expenses"),
+            ),
+            TripExpense,
+        )
+        .join(Trip, TripExpense.trip_id == Trip.id)
+        .filter(Trip.trip_date >= from_date, Trip.trip_date <= to_date)
+        .group_by(Trip.driver_id)
+        .all()
+    )
+    exp_by_driver = {r.driver_id: float(r.expenses) for r in expense_aggs}
+
+    # ── 3. Attendance shifts grouped by driver_id ─────────────────────────────
+    shift_aggs = (
+        filter_by_company(
+            db.query(
+                DriverAttendance.driver_id,
+                func.count(DriverAttendance.id).label("shifts"),
+            ),
+            DriverAttendance,
+        )
+        .filter(
+            DriverAttendance.shift_date >= from_date,
+            DriverAttendance.shift_date <= to_date,
+            DriverAttendance.status == AttendanceStatus.PRESENT,
+        )
+        .group_by(DriverAttendance.driver_id)
+        .all()
+    )
+    shifts_by_driver = {r.driver_id: int(r.shifts) for r in shift_aggs}
+
+    # ── 4. All active drivers (single fetch) ──────────────────────────────────
     drivers = (
         filter_by_company(db.query(Driver), Driver)
         .filter(Driver.is_active == True)
         .all()
     )
+
     results = []
     for d in drivers:
-        perf = get_driver_performance(d.id, company_id, db, from_date, to_date)
-        if perf:
-            results.append(perf)
+        agg       = agg_by_driver.get(d.id)
+        total     = int(agg.total) if agg else 0
+        completed = int(agg.completed) if agg else 0
+        cancelled = int(agg.cancelled) if agg else 0
+        revenue   = float(agg.revenue) if agg else 0.0
+        dist      = float(agg.dist) if agg else 0.0
+        expenses  = exp_by_driver.get(d.id, 0.0)
+        shifts    = shifts_by_driver.get(d.id, 0)
+
+        results.append({
+            "driver_id": d.id,
+            "driver_name": d.full_name,
+            "total_trips": total,
+            "trips_completed": completed,
+            "trips_cancelled": cancelled,
+            "completion_rate": round(completed / total * 100, 1) if total > 0 else 0.0,
+            "total_distance_km": round(dist, 2),
+            "total_revenue_generated": round(revenue, 2),
+            "total_expenses_logged": round(expenses, 2),
+            "avg_revenue_per_trip": round(revenue / completed, 2) if completed > 0 else 0.0,
+            "total_shifts": shifts,
+            "current_status": d.status,
+        })
+
     results.sort(key=lambda x: x["total_trips"], reverse=True)
     return results
 
