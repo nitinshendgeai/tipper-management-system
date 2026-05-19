@@ -3,6 +3,8 @@ builder = "NIXPACKS"
 
 [deploy]
 startCommand = "python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
-healthcheckPath = "/docs"
-healthcheckTimeout = 300
+# /health responds immediately (no DB call) — Railway healthcheck passes fast.
+# /docs was the old target but requires full FastAPI render; replaced in Phase 6.
+healthcheckPath = "/health"
+healthcheckTimeout = 120
 restartPolicyType = "ON_FAILURE"
