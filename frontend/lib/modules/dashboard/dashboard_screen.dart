@@ -171,6 +171,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                   const SizedBox(height: 24),
 
+                  // ── Phase 5: Today's KPIs ────────────────────────────────
+                  _sectionLabel("Today's KPIs"),
+                  const SizedBox(height: 10),
+                  _todayKpiRow(stats, loading),
+
+                  const SizedBox(height: 16),
+
+                  // ── Phase 5: Performance Metrics ─────────────────────────
+                  _sectionLabel('Performance Metrics'),
+                  const SizedBox(height: 10),
+                  _performanceRow(stats, loading),
+
+                  const SizedBox(height: 24),
+
                   // ── Section: Master Data ─────────────────────────────────
                   _sectionLabel('Master Data'),
                   const SizedBox(height: 10),
@@ -225,7 +239,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     _DashCard(
                       title: 'Trips Today',
-                      value: stats.tripsActive.toString(),
+                      value: stats.tripsToday.toString(),
                       icon: Icons.directions_car_rounded,
                       color: const Color(0xFFEA580C),
                       isLoading: loading,
@@ -326,6 +340,132 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(width: 8),
         _statusPill('Off Duty', stats.driversOffDuty, AppColors.error, loading),
       ],
+    );
+  }
+
+  // ─── Today's KPI row (Phase 5) ────────────────────────────────────────────
+
+  Widget _todayKpiRow(DashboardStatsModel stats, bool loading) {
+    return Row(
+      children: [
+        _kpiPill(
+          label: 'Trips',
+          value: stats.tripsToday.toString(),
+          color: const Color(0xFF1E40AF),
+          loading: loading,
+        ),
+        const SizedBox(width: 8),
+        _kpiPill(
+          label: 'Done',
+          value: stats.tripsCompletedToday.toString(),
+          color: const Color(0xFF16A34A),
+          loading: loading,
+        ),
+        const SizedBox(width: 8),
+        _kpiPill(
+          label: 'Revenue',
+          value: '₹${_fmt(stats.revenueToday)}',
+          color: const Color(0xFF15803D),
+          loading: loading,
+        ),
+        const SizedBox(width: 8),
+        _kpiPill(
+          label: 'This Month',
+          value: '₹${_fmt(stats.revenueThisMonth)}',
+          color: const Color(0xFF0E7490),
+          loading: loading,
+        ),
+      ],
+    );
+  }
+
+  // ─── Performance metrics row (Phase 5) ───────────────────────────────────
+
+  Widget _performanceRow(DashboardStatsModel stats, bool loading) {
+    return Row(
+      children: [
+        _kpiPill(
+          label: 'Completion',
+          value: '${stats.tripCompletionRate.toStringAsFixed(0)}%',
+          color: const Color(0xFF7C3AED),
+          loading: loading,
+        ),
+        const SizedBox(width: 8),
+        _kpiPill(
+          label: 'Avg Rev/Trip',
+          value: '₹${_fmt(stats.avgRevenuePerTrip)}',
+          color: const Color(0xFFD97706),
+          loading: loading,
+        ),
+        const SizedBox(width: 8),
+        _kpiPill(
+          label: 'Utilisation',
+          value: '${stats.utilisationPct.toStringAsFixed(0)}%',
+          color: const Color(0xFF0891B2),
+          loading: loading,
+        ),
+        const SizedBox(width: 8),
+        _kpiPill(
+          label: 'Net Revenue',
+          value: '₹${_fmt(stats.netRevenue)}',
+          color: stats.netRevenue >= 0
+              ? const Color(0xFF15803D)
+              : const Color(0xFFDC2626),
+          loading: loading,
+        ),
+      ],
+    );
+  }
+
+  Widget _kpiPill({
+    required String label,
+    required String value,
+    required Color color,
+    required bool loading,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
+        ),
+        child: Column(
+          children: [
+            loading
+                ? SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: color,
+                    ),
+                  )
+                : Text(
+                    value,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: color,
+                    ),
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 9,
+                color: color,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
