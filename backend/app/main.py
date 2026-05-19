@@ -1,5 +1,9 @@
-from fastapi import FastAPI
+import logging
+import logging.config
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.db.bootstrap import ensure_database_schemas, repair_existing_schema
 from app.db.seed import seed_data
@@ -39,6 +43,40 @@ from app.models.attendance import DriverAttendance
 
 
 
+# ─── Logging configuration ────────────────────────────────────────────────────
+# Phase 6: structured logging for production debugging.
+# Logs go to stdout so Railway picks them up in the Logs tab.
+# Do NOT log credentials, passwords, or tokens here.
+
+logging.config.dictConfig({
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "default": {
+            "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "default",
+            "stream": "ext://sys.stdout",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+    "loggers": {
+        # Quieten noisy libraries
+        "uvicorn.access": {"level": "WARNING"},
+        "sqlalchemy.engine": {"level": "WARNING"},
+    },
+})
+
+logger = logging.getLogger(__name__)
+
 app = FastAPI(
     title="Tipper ERP API",
     description="Intelligent Operational Fleet ERP — FastAPI backend",
@@ -55,27 +93,48 @@ app.add_middleware(
 )
 
 
+# ─── Global exception handler ─────────────────────────────────────────────────
+# Phase 6: catch unhandled exceptions and return a clean JSON 500
+# instead of leaking Python stack traces to API consumers.
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(
+        "Unhandled exception on %s %s: %s",
+        request.method, request.url.path, repr(exc),
+        exc_info=True,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "An unexpected server error occurred. "
+                      "The operations team has been notified.",
+            "path": str(request.url.path),
+        },
+    )
+
+
 @app.on_event("startup")
 def startup():
-    print("[startup] Startup event triggered")
+    logger.info("=== Tipper ERP API — startup sequence starting ===")
 
     # Step 1: Ensure PostgreSQL schemas exist before table creation
-    # ensure_database_schemas was imported but not called — fixed in Phase 2 (START-001)
-    print("[startup] Ensuring PostgreSQL schemas exist (auth, master, operations, tenant)")
+    logger.info("[startup] Ensuring PostgreSQL schemas: auth, master, operations, tenant")
     ensure_database_schemas(engine)
 
     # Step 2: Create all tables from ORM models
-    print("[startup] Running Base.metadata.create_all()")
+    logger.info("[startup] Running Base.metadata.create_all()")
     Base.metadata.create_all(bind=engine)
 
-    # Step 3: Apply safe column repairs for older database instances
-    # repair_existing_schema was imported but not called — fixed in Phase 2 (START-001)
-    print("[startup] Running repair_existing_schema() for column backfill")
+    # Step 3: Apply safe column repairs and Phase 6 indexes
+    logger.info("[startup] Running repair_existing_schema() — column backfill + indexes")
     repair_existing_schema(engine)
 
     # Step 4: Seed legacy single-tenant roles and admin user
-    print("[startup] Calling seed_data()")
+    logger.info("[startup] Calling seed_data()")
     seed_data()
+
+    logger.info("=== Tipper ERP API — startup complete. Routes active. ===")
 
 
 # ─── Company Registration (public) ───────────────────────────────────────────
