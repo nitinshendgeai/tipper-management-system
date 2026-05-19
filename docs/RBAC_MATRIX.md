@@ -1,8 +1,8 @@
 # RBAC Matrix — Tipper Management ERP
 
-**Version:** 3.0.0  
-**Last Updated:** 2026-05-18  
-**Phase:** System Stabilization — Phase 4 Complete  
+**Version:** 4.0.0  
+**Last Updated:** 2026-05-19  
+**Phase:** Analytics + Dashboard Intelligence + AI Foundation — Phase 5 Complete  
 
 ---
 
@@ -117,6 +117,11 @@ Defined in `app/core/permissions.py` as `Permission(str, Enum)`:
 | GET | `/attendance/me` | VIEW_ATTENDANCE (DRIVER own only) |
 | GET | `/attendance/today` | VIEW_ATTENDANCE |
 | GET | `/attendance/` | VIEW_ATTENDANCE (MANAGER+) |
+| GET | `/analytics/operational` | VIEW_ANALYTICS (MANAGER, SUPER_ADMIN) |
+| GET | `/analytics/fleet` | VIEW_ANALYTICS (MANAGER, SUPER_ADMIN) |
+| GET | `/analytics/driver/me` | VIEW_TRIPS (DRIVER only — role-enforced) |
+| GET | `/analytics/alerts` | VIEW_DASHBOARD (SUPERVISOR+, all roles) |
+| GET | `/analytics/supervisor/snapshot` | VIEW_DASHBOARD (all roles) |
 
 ---
 

@@ -1,7 +1,7 @@
 # API Flow — Tipper Management ERP
 
-**Version:** 2.0.0  
-**Last Updated:** 2026-05-17  
+**Version:** 4.0.0  
+**Last Updated:** 2026-05-19  
 **Base URL (Production):** `https://tipper-management-system.up.railway.app`  
 **Docs URL:** `https://tipper-management-system.up.railway.app/docs`
 
@@ -277,14 +277,82 @@ Response: {
 
   vehicles_available, vehicles_assigned, vehicles_on_trip, vehicles_maintenance,
   drivers_available, drivers_on_trip, drivers_off_duty,
+  drivers_on_duty,      ← Phase 4: punched in today, shift still active
 
   trips_total, trips_created, trips_active, trips_completed, trips_cancelled,
 
-  total_revenue,        ← sum of completed trip revenue_amount
-  total_diesel_used,    ← sum of completed trip diesel_used
-  total_trip_expenses,  ← sum of all trip_expenses.amount
+  total_revenue,        ← sum of completed trip revenue_amount (all-time)
+  total_diesel_used,    ← sum of completed trip diesel_used (all-time)
+  total_trip_expenses,  ← sum of all trip_expenses.amount (all-time)
 
-  utilisation_pct       ← (on_trip / active_fleet) * 100
+  utilisation_pct,      ← (on_trip / active_fleet) * 100
+
+  -- Phase 5 fields (Optional — default 0 on old backends) --
+  trips_today,              ← total trips created today
+  trips_completed_today,    ← trips completed today
+  revenue_today,            ← revenue from completed trips today
+  revenue_this_month,       ← revenue from completed trips this month
+  trip_completion_rate,     ← completed / (completed + cancelled) * 100 (all-time)
+  avg_revenue_per_trip,     ← average revenue per completed trip (all-time)
+  avg_diesel_per_trip       ← average diesel litres per completed trip (all-time)
+}
+```
+
+---
+
+### 9. Analytics Engine (Phase 5)
+
+```
+GET /analytics/operational?period=today|week|month|last_30_days
+Permission: VIEW_ANALYTICS (MANAGER, SUPER_ADMIN)
+
+Response: OperationalKPIs {
+  window: { period, from_date, to_date },
+  trips_created, trips_started, trips_completed, trips_cancelled, trip_completion_rate,
+  total_revenue, total_diesel_expense, total_trip_expenses, net_revenue,
+  avg_revenue_per_trip, avg_expense_per_trip,
+  total_distance_km, total_diesel_litres, avg_fuel_efficiency_km_per_litre,
+  total_driver_shifts
+}
+
+GET /analytics/fleet?period=today|week|month|last_30_days
+Permission: VIEW_ANALYTICS (MANAGER, SUPER_ADMIN)
+
+Response: FleetAnalytics {
+  window, total_vehicles, active_vehicles, utilisation_pct, avg_trips_per_vehicle,
+  top_vehicles: [ VehicleUtilization { vehicle_id, vehicle_number, total_trips,
+                  total_distance_km, total_revenue, total_diesel_used, current_status } ]
+}
+
+GET /analytics/driver/me?period=today|week|month|last_30_days
+Permission: VIEW_TRIPS (DRIVER role only — enforced in handler)
+
+Response: DriverSelfStats {
+  window, driver_name, total_trips, trips_completed, trips_cancelled,
+  total_distance_km, total_revenue_generated, total_expenses_logged,
+  total_shifts, current_status, punched_in_today, punch_in_time
+}
+
+GET /analytics/alerts
+Permission: VIEW_DASHBOARD (all authenticated roles)
+
+Response: AlertsResponse {
+  total_alerts, critical_count, high_count,
+  alerts: [ OperationalAlert {
+    alert_type, severity, title, message,
+    entity_type, entity_id, entity_label, triggered_at
+  } ]
+}
+Alert types: OVERDUE_TRIP | EXCESSIVE_EXPENSE | LOW_ATTENDANCE |
+             INACTIVE_VEHICLE | INACTIVE_DRIVER | HIGH_CANCELLATION
+
+GET /analytics/supervisor/snapshot
+Permission: VIEW_DASHBOARD (all authenticated roles)
+
+Response: SupervisorSnapshot {
+  today, drivers_on_duty, drivers_off_duty, drivers_on_trip,
+  active_assignments, trips_created_today, trips_started_today,
+  trips_completed_today, pending_trips
 }
 ```
 

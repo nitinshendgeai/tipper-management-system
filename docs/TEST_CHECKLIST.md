@@ -1,8 +1,8 @@
 # Test Checklist — Tipper Management ERP
 
-**Version:** 3.0.0  
-**Last Updated:** 2026-05-18  
-**Phase:** System Stabilization — Phase 4 Operational Workflow  
+**Version:** 4.0.0  
+**Last Updated:** 2026-05-19  
+**Phase:** Analytics + Dashboard Intelligence + AI Foundation — Phase 5 Complete  
 
 ---
 
@@ -309,3 +309,90 @@ Mark each item: ✅ Pass | ❌ Fail | ⏭️ Skip | 🔄 Retest
 |---|---|---|---|
 | P4-31 | Use expired token → make any authenticated request | App redirects to login screen | |
 | P4-32 | Redirected to login → login with valid credentials | Works normally, new token stored | |
+
+---
+
+## Phase 5 Tests — Analytics + Dashboard Intelligence
+
+### Analytics API — Operational KPIs
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P5-01 | GET `/analytics/operational` as MANAGER (no period param) | 200, defaults to today window | |
+| P5-02 | GET `/analytics/operational?period=week` as MANAGER | 200, week window data returned | |
+| P5-03 | GET `/analytics/operational?period=month` as MANAGER | 200, month window data returned | |
+| P5-04 | GET `/analytics/operational?period=last_30_days` as MANAGER | 200, 30-day window returned | |
+| P5-05 | GET `/analytics/operational` as DRIVER | 403 Forbidden (VIEW_ANALYTICS required) | |
+| P5-06 | GET `/analytics/operational` as SUPERVISOR | 403 Forbidden | |
+| P5-07 | Verify `trip_completion_rate` = completed / total * 100 | Mathematically correct | |
+| P5-08 | Verify `net_revenue` = total_revenue - diesel - expenses | Mathematically correct | |
+
+### Analytics API — Fleet
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P5-09 | GET `/analytics/fleet` as MANAGER | 200, all vehicles listed | |
+| P5-10 | GET `/analytics/fleet?period=week` | Vehicle stats scoped to this week only | |
+| P5-11 | Vehicles sorted by total_trips descending | Most active vehicle first | |
+| P5-12 | GET `/analytics/fleet` as DRIVER | 403 Forbidden | |
+| P5-13 | Verify `avg_trips_per_vehicle` = total_trips_all / vehicle_count | Mathematically correct | |
+
+### Analytics API — Driver Self-Stats
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P5-14 | GET `/analytics/driver/me` as DRIVER (with user_id linked) | 200, driver's own stats | |
+| P5-15 | GET `/analytics/driver/me` as MANAGER | 403 Forbidden | |
+| P5-16 | GET `/analytics/driver/me` as DRIVER (no user_id link) | 404 Not Found | |
+| P5-17 | `punched_in_today` = true when driver has punch-in today | Correct | |
+| P5-18 | `punch_in_time` returned when punched in today | Non-null datetime | |
+
+### Analytics API — Smart Alerts
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P5-19 | GET `/analytics/alerts` as MANAGER | 200, alerts list returned | |
+| P5-20 | GET `/analytics/alerts` as DRIVER | 200 (uses VIEW_DASHBOARD — all roles) | |
+| P5-21 | Start a trip > 8 hours ago → check alerts | OVERDUE_TRIP alert present, severity HIGH | |
+| P5-22 | Log expense > ₹10,000 on a recent trip | EXCESSIVE_EXPENSE alert present | |
+| P5-23 | < 50% drivers punched in today | LOW_ATTENDANCE alert present | |
+| P5-24 | Vehicle AVAILABLE with no trips in 7+ days | INACTIVE_VEHICLE alert present | |
+| P5-25 | > 20% cancellations this week | HIGH_CANCELLATION alert present | |
+| P5-26 | Alerts sorted: HIGH before MEDIUM before LOW | Sort order verified | |
+| P5-27 | Alerts from Company A not visible in Company B | Tenant isolation verified | |
+
+### Analytics API — Supervisor Snapshot
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P5-28 | GET `/analytics/supervisor/snapshot` as SUPERVISOR | 200, today's operational counts | |
+| P5-29 | `trips_completed_today` matches dashboard today count | Consistent with dashboard | |
+| P5-30 | `drivers_on_duty` matches attendance today count | Consistent with attendance | |
+
+### Dashboard API — Phase 5 Fields
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P5-31 | GET `/dashboard/stats` — new fields present in response | trips_today, revenue_today, trip_completion_rate, etc. | |
+| P5-32 | `trips_today` = all trips created today (regardless of status) | Correct count | |
+| P5-33 | `revenue_today` = sum of completed trip revenue today | Correct amount | |
+| P5-34 | `revenue_this_month` = sum of completed trip revenue this month | Correct amount | |
+| P5-35 | `avg_revenue_per_trip` is all-time average (all completed trips) | Consistent with total_revenue / trips_completed | |
+
+### Frontend Dashboard — Phase 5 UI
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P5-36 | Dashboard loads — "Today's KPIs" row visible | 4 pills: Trips, Done, Revenue, This Month | |
+| P5-37 | Dashboard loads — "Performance Metrics" row visible | Completion %, Avg Rev/Trip, Utilisation, Net Revenue | |
+| P5-38 | "Trips Today" card shows today's trips (not trips_active) | Uses `tripsToday` field | |
+| P5-39 | Net Revenue shows red when negative | Color changes to red correctly | |
+| P5-40 | Loading state: Phase 5 pills show spinner | CircularProgressIndicator visible during load | |
+
+### Tenant Isolation — Analytics
+
+| # | Test | Expected | Status |
+|---|---|---|---|
+| P5-41 | Company A and B both have trips — GET /analytics/operational | Each sees only own metrics | |
+| P5-42 | Company A vehicle inactive — Company B should NOT see alert | Company B alerts only for own fleet | |
+| P5-43 | Concurrent requests from two companies | Correct tenant context preserved per request | |

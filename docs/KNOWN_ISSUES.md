@@ -1,8 +1,8 @@
 # Known Issues — Tipper Management ERP
 
-**Version:** 3.0.0  
-**Last Updated:** 2026-05-18  
-**Phase:** System Stabilization — Phase 4 Operational Workflow  
+**Version:** 4.0.0  
+**Last Updated:** 2026-05-19  
+**Phase:** Analytics + Dashboard Intelligence + AI Foundation — Phase 5 Complete  
 
 ---
 
@@ -323,6 +323,44 @@ Cross-origin requests are allowed from any domain. In production this means any 
 
 ---
 
+## Phase 5 Issues Added
+
+### ANLT-001 — Analytics N+1 queries on vehicle/driver stats
+**Severity:** 🟡 Medium  
+**Files:** `backend/app/services/analytics_service.py` — `get_vehicle_trip_stats()`, `get_all_drivers_performance()`  
+**Description:** Both functions issue individual trip queries for each vehicle/driver in a loop. For fleets with 50+ vehicles/drivers this produces N+1 DB round-trips. Under current scale (early SaaS) this is acceptable, but will degrade as data grows.  
+**Fix:** Refactor to use GROUP BY aggregation queries that retrieve all vehicles/drivers in a single query.  
+**Status:** 📋 Backlog — Phase 6
+
+---
+
+### ANLT-002 — Alert detection scans all vehicles/drivers without pagination
+**Severity:** 🟡 Medium  
+**File:** `backend/app/services/alert_service.py` — `_detect_inactive_vehicles()`, `_detect_inactive_drivers()`  
+**Description:** These detectors load all AVAILABLE vehicles/drivers into memory and then query each one individually for recent trips. For large fleets this is memory-intensive.  
+**Fix:** Rewrite as a single SQL LEFT JOIN query with date filter, returning only those with no recent trips.  
+**Status:** 📋 Backlog — Phase 6
+
+---
+
+### ANLT-003 — Driver self-stats endpoint requires user_id link
+**Severity:** 🟡 Medium  
+**File:** `backend/app/api/analytics_api.py` — `GET /analytics/driver/me`  
+**Description:** This endpoint resolves the DRIVER's profile via `Driver.user_id == current_user.id`. If the manager has not linked the driver profile to the user account (see ATTEND-001), the endpoint returns HTTP 404.  
+**Fix:** Same fix as ATTEND-001 — manager must set `user_id` on each driver profile. Document this dependency clearly in onboarding.  
+**Status:** 🔧 Known — same root cause as ATTEND-001
+
+---
+
+### FE-005 — Dashboard Phase 5 KPI fields default to 0 if old backend
+**Severity:** 🟢 Low  
+**File:** `frontend/lib/modules/dashboard/models/dashboard_stats_model.dart`  
+**Description:** Phase 5 KPI fields (tripsToday, revenueToday, etc.) are Optional with default 0 in the Flutter model. If the backend is an older deployment that doesn't return these fields, the dashboard will silently show 0 for all Phase 5 KPIs rather than showing an error.  
+**Fix:** Acceptable. After Railway deployment is updated, all fields will be populated. No action needed.  
+**Status:** 📋 Self-resolving on deployment
+
+---
+
 ## Phase 2 + Phase 3 Fix Tracker
 
 | Issue ID | Description | Priority | Status |
@@ -344,3 +382,7 @@ Cross-origin requests are allowed from any domain. In production this means any 
 | FE-004 | 401 interceptor — services use local Dio, not shared | 🟢 Low | 📋 Phase 5 |
 | P4-TRIPS | DRIVER sees all company trips, not own only | 🟠 High | ✅ Fixed in Phase 4 |
 | P4-ATTEND | No attendance module in codebase | 🔴 Critical | ✅ Added in Phase 4 |
+| ANLT-001 | Analytics N+1 queries on vehicle/driver stats | 🟡 Medium | 📋 Phase 6 |
+| ANLT-002 | Alert detection scans all vehicles/drivers in memory | 🟡 Medium | 📋 Phase 6 |
+| ANLT-003 | Driver self-stats requires user_id link | 🟡 Medium | 🔧 Same as ATTEND-001 |
+| FE-005 | Phase 5 KPI fields default to 0 on old backend | 🟢 Low | 📋 Self-resolving on deploy |

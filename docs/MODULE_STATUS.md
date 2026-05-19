@@ -1,8 +1,8 @@
 # Module Status — Tipper Management ERP
 
-**Version:** 2.0.0  
-**Last Updated:** 2026-05-17  
-**Phase:** System Stabilization  
+**Version:** 4.0.0  
+**Last Updated:** 2026-05-19  
+**Phase:** Analytics + Dashboard Intelligence + AI Foundation — Phase 5 Complete  
 
 ---
 
@@ -46,7 +46,8 @@
 | Route Intelligence | `app/api/route_intelligence_api.py` | ⚠️ Partial | Google Maps integration works when key present. Fallback formula uses pseudo-random (SHA256 seed) — not real coordinates. |
 | Trip Operations | `app/api/trip_api.py` | ✅ Working | Full lifecycle: CREATE → START → COMPLETE/CANCEL. FSM enforced (status transition checks). Status syncs to vehicle/driver. |
 | Trip Expenses | `app/api/trip_expense_api.py` | ✅ Working | Add/list/delete expenses per trip with tenant isolation |
-| Dashboard Analytics | `app/api/dashboard_api.py` | ✅ Working | All counters, financial aggregates, and utilisation % functional and company-scoped |
+| Dashboard Analytics | `app/api/dashboard_api.py` | ✅ Working | All counters, financials, utilisation %, plus Phase 5 today/month KPIs. Company-scoped. |
+| Analytics API | `app/api/analytics_api.py` | ✅ Working | Phase 5: /analytics/operational, /driver/me, /fleet, /alerts, /supervisor/snapshot |
 | Admin Dashboard | `app/api/admin_api.py` | ❌ Broken | Stub endpoint — returns mock message only. Uses legacy `RoleChecker` (role_id=1 check, not RBAC). No real admin functionality. |
 | Dependencies | `app/api/dependencies.py` | ⚠️ Partial | `get_current_tenant_user` is correct. `get_current_user` (legacy, email-only) still exposed and used by `/auth/me` and admin_api. |
 | Role Checker | `app/api/role_checker.py` | 🔒 Legacy | `RoleChecker` class uses legacy `role_id` check. Should not be extended. |
@@ -66,6 +67,14 @@
 | DriverVehicleAssignment | `models/assignment.py` | master | ✅ Working | Shift assignment with is_active flag |
 | Trip | `models/trip.py` | operations | ✅ Working | Full lifecycle fields, company_id nullable (migration artifact) |
 | TripExpense | `models/trip_expense.py` | operations | ✅ Working | Itemized expenses per trip |
+| DriverAttendance | `models/attendance.py` | operations | ✅ Working | Phase 4: punch_in/out, is_active, UniqueConstraint(driver_id, shift_date, company_id) |
+
+### Services (Phase 5 — Analytics Layer)
+
+| Service | File | Status | Notes |
+|---|---|---|---|
+| Analytics Service | `services/analytics_service.py` | ✅ Working | Pure functions: trip counts/financials, fleet utilization, driver performance, attendance, supervisor snapshot |
+| Alert Service | `services/alert_service.py` | ✅ Working | Stateless detectors: overdue trips, excessive expenses, low attendance, inactive vehicles/drivers, high cancellations |
 
 ### Schemas (Pydantic)
 
@@ -79,7 +88,8 @@
 | `schemas/assignment_schema.py` | ✅ Working | Allocation schemas |
 | `schemas/trip_schema.py` | ✅ Working | Create, Response, ListItem, Start/Complete/Cancel requests |
 | `schemas/trip_expense_schema.py` | ✅ Working | Expense schemas |
-| `schemas/dashboard_schema.py` | ✅ Working | DashboardStats schema |
+| `schemas/dashboard_schema.py` | ✅ Working | DashboardStats schema — Phase 5 adds today/month KPI fields (Optional, backward-compatible) |
+| `schemas/analytics_schema.py` | ✅ Working | Phase 5: TimeWindow, OperationalKPIs, FleetAnalytics, DriverPerformance, DriverSelfStats, SupervisorSnapshot, OperationalAlert, AlertsResponse |
 
 ---
 
@@ -112,7 +122,8 @@
 
 | Category | Total | ✅ Working | ⚠️ Partial | ❌ Broken | 🔒 Legacy |
 |---|---|---|---|---|---|
-| API Routers | 11 | 7 | 2 | 1 | 1 |
-| Models | 11 | 9 | 1 | 0 | 1 |
+| API Routers | 13 | 9 | 2 | 1 | 1 |
+| Models | 12 | 10 | 1 | 0 | 1 |
 | Core Modules | 8 | 4 | 3 | 0 | 1 |
-| Schemas | 9 | 9 | 0 | 0 | 0 |
+| Schemas | 11 | 11 | 0 | 0 | 0 |
+| Services | 2 | 2 | 0 | 0 | 0 |
