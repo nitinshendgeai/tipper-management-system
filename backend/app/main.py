@@ -21,6 +21,7 @@ from app.api.trip_expense_api import router as trip_expense_router
 
 from app.api.dashboard_api import router as dashboard_router
 from app.api.attendance_api import router as attendance_router
+from app.api.analytics_api import router as analytics_router
 
 from app.models.company import Company, CompanySettings, UserRole
 from app.models.user import User
@@ -164,4 +165,13 @@ app.include_router(
     dashboard_router,
     prefix="/dashboard",
     tags=["Dashboard Analytics"]
+)
+
+
+# ─── Analytics ────────────────────────────────────────────────────────────────
+
+app.include_router(
+    analytics_router,
+    prefix="/analytics",
+    tags=["Analytics & Intelligence"]
 )
