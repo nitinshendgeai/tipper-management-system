@@ -11,10 +11,13 @@ On registration the system automatically creates:
   • An admin user  admin@<slugified-company-name>.com / admin1234
 """
 
+import logging
 import uuid
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from app.db.session import SessionLocal
 from app.models.company import Company, CompanySettings, UserRole
@@ -140,9 +143,11 @@ def register_company(data: CompanyRegisterRequest):
         raise
     except Exception as exc:
         db.rollback()
+        # Phase 7 fix (TENANT-004): log internally, never leak raw exception to client
+        logger.error("Company registration failed: %s", exc, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Registration failed: {exc}",
+            detail="Company registration failed due to a server error. Please try again.",
         )
     finally:
         db.close()

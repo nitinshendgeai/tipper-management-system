@@ -1,23 +1,24 @@
 # Deployment Flow — Tipper Management ERP
 
-**Version:** 2.0.0  
-**Last Updated:** 2026-05-17  
-**Platform:** Railway.io  
-**Production URL:** `https://tipper-management-system.up.railway.app`
+**Version:** 3.0.0
+**Last Updated:** 2026-05-19
+**Platform:** Railway.io
+**Production Backend:** `https://tipper-management-system.up.railway.app`
+**Production Frontend:** `https://tipper-frontend-ar.up.railway.app`
 
 ---
 
 ## Infrastructure Overview
 
 ```
-GitHub Repository
-    │ (push to main branch)
+GitHub Repository (staging-release branch)
+    │ (push triggers auto-build)
     │
     ▼
 Railway.io
     ├── FastAPI Service (NIXPACKS auto-build)
     │     Start: cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    │     Health: GET /docs
+    │     Health: GET /health   ← zero DB calls, responds <1ms
     │     Restart: ON_FAILURE
     │
     └── PostgreSQL Service (Railway-managed)
@@ -34,184 +35,134 @@ builder = "NIXPACKS"
 
 [deploy]
 startCommand = "cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
-healthcheckPath = "/docs"
-healthcheckTimeout = 300
+healthcheckPath = "/health"       # Phase 6: was /docs — DB-free, responds in <1ms
+healthcheckTimeout = 120          # Phase 6: was 300 — reduced because /health is instant
 restartPolicyType = "ON_FAILURE"
 ```
-
-**NIXPACKS** auto-detects Python, installs from `backend/requirements.txt`, and runs the start command.
 
 ---
 
 ## Environment Variables (Required on Railway)
 
-Set these in Railway → Project → Variables:
-
 | Variable | Value | Notes |
 |---|---|---|
-| `DATABASE_URL` | `postgresql://...` (auto-injected by Railway) | Railway auto-sets this if PostgreSQL plugin is connected |
-| `SECRET_KEY` | Random 32+ char string | ⚠️ Must be set — default is insecure |
+| `DATABASE_URL` | `postgresql://...` | Auto-injected by Railway if PostgreSQL plugin is connected |
+| `SECRET_KEY` | Random 32+ char string | ⚠️ Must be set — default `"tipper-secret-key"` is insecure |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | JWT TTL (optional, defaults to 60) |
 | `GOOGLE_MAPS_API_KEY` | Google Maps API key | Optional — route intelligence falls back to formula without it |
 | `TIPPER_FUEL_EFFICIENCY_KM_PER_LITRE` | `5.0` | Optional — tipper fleet diesel efficiency |
 
 ---
 
-## Deploy Process
+## Zero-DB Startup Design (Phase 6)
 
-### Standard Deploy (Code Push)
+**Root cause of past failures:** any DB call in `startup()` raised `OperationalError`
+if Postgres wasn't ready on cold-start. The process crashed before serving a single
+request — Railway saw "service unavailable".
 
-```
-1. Developer pushes to main branch
-2. Railway detects push → triggers auto-build
-3. NIXPACKS:
-   a. Detects Python project
-   b. Installs dependencies: pip install -r backend/requirements.txt
-   c. Runs start command
-4. Uvicorn starts on $PORT
-5. FastAPI startup event fires:
-   a. Base.metadata.create_all(bind=engine)   ← creates any missing tables
-   b. seed_data()                              ← seeds legacy roles + admin user
-6. Railway polls GET /docs
-7. If /docs returns 200 within 300s → deploy successful
-8. Traffic switched to new instance
-```
-
-### On Startup Failure
-
-```
-Railway policy: restartPolicyType = "ON_FAILURE"
-→ Automatic restart on crash
-→ Check Railway logs if healthcheck fails repeatedly
-```
-
----
-
-## Database Migration Process
-
-Migrations use **Alembic**. Run from `backend/` directory.
-
-### Running a Migration (Manual)
-
-```bash
-cd backend
-
-# Check current migration state
-alembic current
-
-# Show migration history
-alembic history --verbose
-
-# Apply all pending migrations
-alembic upgrade head
-
-# Roll back one step
-alembic downgrade -1
-```
-
-### Creating a New Migration
-
-```bash
-# Auto-generate from model changes (review before applying!)
-alembic revision --autogenerate -m "describe_your_change"
-
-# Or create a blank migration
-alembic revision -m "describe_your_change"
-```
-
-### Migration Files Location
-
-```
-backend/alembic/versions/
-├── 6c49d61bb804_initial_migration.py      ← Initial schema
-├── ee2c2b6b204c_update_routes_table.py    ← Routes update
-├── 64e866bd0f40_add_remarks_to_routes.py  ← Remarks column
-└── a1b2c3d4e5f6_add_multi_tenant_support.py ← Multi-tenant transform
-```
-
-### Migration vs. `Base.metadata.create_all`
-
-**Important:** The app uses **both** mechanisms:
-- `Base.metadata.create_all()` runs on startup — safe for adding new tables but does NOT modify existing tables
-- Alembic migrations handle column changes, index changes, and constraint changes
-
-When adding a new model, add it to `app/models/__init__.py` so `Base.metadata.create_all()` picks it up.
-
----
-
-## Startup Sequence (After Phase 2 Fix)
+**Solution:** startup event does zero database work. All 4 init steps run in a daemon
+background thread after the process is already healthy and serving requests.
 
 ```
 Uvicorn process starts
     │
     ▼
-FastAPI app initialized
-    │  (imports all routers, models)
+GET /health registered — responds 200 immediately
     │
     ▼
 @app.on_event("startup") fires
-    │
-    ├─► ensure_database_schemas(engine)
-    │       CREATE SCHEMA IF NOT EXISTS auth
-    │       CREATE SCHEMA IF NOT EXISTS master
-    │       CREATE SCHEMA IF NOT EXISTS operations
-    │       CREATE SCHEMA IF NOT EXISTS tenant
-    │
-    ├─► Base.metadata.create_all(bind=engine)
-    │       Creates tables (schemas now guaranteed to exist)
-    │
-    ├─► repair_existing_schema(engine)
-    │       Runs IF NOT EXISTS column repairs (safe on existing DBs)
-    │
-    └─► seed_data()
-            Checks/creates auth.roles (5 legacy roles)
-            Checks/creates admin@tipper.com user
-            Commits and closes session
+    └─► launches daemon thread "db-init" — returns immediately (no DB work)
     │
     ▼
-FastAPI ready — routes active
+Railway healthcheck: GET /health → 200 in <1ms ✅ DEPLOY SUCCEEDS
     │
-    ▼
-Railway health check: GET /docs → 200
-    │
-    ▼
-Deploy complete — traffic routed
+    ▼  (background — concurrent with live traffic)
+_run_background_init():
+    ├── 1/4 ensure_database_schemas()   CREATE SCHEMA IF NOT EXISTS ×4
+    ├── 2/4 Base.metadata.create_all()  CREATE TABLE IF NOT EXISTS ×N
+    ├── 3/4 repair_existing_schema()    ALTER TABLE + CREATE INDEX + DO blocks
+    └── 4/4 seed_data()                 Legacy roles + admin@tipper.com
 ```
+
+Monitor background init via `/health`:
+```json
+{
+  "status": "ok",
+  "db_init_complete": true,
+  "db_init_error": null,
+  "db_init_steps_done": ["schemas", "tables", "repair_schema", "seed_data"],
+  "db_init_elapsed_s": 4.2
+}
+```
+
+---
+
+## repair_existing_schema() — Why It Exists
+
+`Base.metadata.create_all()` never modifies existing tables. Pre-existing databases
+need `repair_existing_schema()` to backfill missing columns and add indexes:
+
+| What | SQL |
+|---|---|
+| `company_id` column on all 7 tenant tables | `ALTER TABLE ... ADD COLUMN IF NOT EXISTS company_id UUID` |
+| 15 performance indexes | `CREATE INDEX IF NOT EXISTS idx_*` |
+| Per-company unique constraints | `DO $$ ... IF NOT EXISTS ... $$` blocks |
+
+---
+
+## Standalone DB Init Script
+
+For manual execution after a fresh DB reset or Railway one-off job:
+
+```bash
+cd backend && python scripts/run_db_init.py
+```
+
+Runs all 4 steps with per-step timing. Fully idempotent.
+
+---
+
+## Database Migrations (Alembic)
+
+```bash
+cd backend
+alembic current          # check state
+alembic upgrade head     # apply pending migrations
+alembic downgrade -1     # roll back one step
+```
+
+Migration files: `backend/alembic/versions/`
 
 ---
 
 ## Rollback Procedure
 
 ```
-1. In Railway dashboard → Deployments
-2. Select previous successful deployment
-3. Click "Redeploy" to restore previous version
-
-For database rollbacks:
-  cd backend
-  alembic downgrade <target-revision>
-  ⚠ Warning: downgrade may lose data — verify migration has a safe down() function
+Railway dashboard → Deployments → select previous → Redeploy
 ```
+
+For DB rollback: `cd backend && alembic downgrade <revision>`
 
 ---
 
 ## Monitoring
 
-| Check | Method |
+| Check | URL |
 |---|---|
-| App health | `GET https://tipper-management-system.up.railway.app/docs` |
-| API schema | `GET https://tipper-management-system.up.railway.app/openapi.json` |
-| Railway logs | Railway dashboard → Logs tab |
-| DB connection | Any authenticated API call will fail if DB is unreachable |
+| Health + DB init progress | `GET .../health` |
+| Swagger UI | `GET .../docs` |
+| Railway logs | Dashboard → Logs tab → look for `[bg-init]` lines |
 
 ---
 
-## Common Deployment Issues
+## Common Issues
 
-| Issue | Likely Cause | Fix |
+| Symptom | Cause | Fix |
 |---|---|---|
-| Health check fails (timeout) | App crashing on startup (usually DB connection) | Check Railway logs; verify DATABASE_URL is set |
-| `RuntimeError: DATABASE_URL is required` | DATABASE_URL env var not set | Set in Railway Variables |
-| `sqlalchemy.exc.OperationalError` | Schema doesn't exist on fresh DB | Phase 2 fix (START-001) ensures schemas created first |
-| App starts but login fails | SECRET_KEY not set (using insecure default) | Set SECRET_KEY in Railway Variables |
-| Migration fails | Conflict between `create_all` and Alembic | Run `alembic current` and `alembic upgrade head` to sync |
+| "service unavailable" on healthcheck | Old startup with DB calls | Phase 6 zero-DB fix resolves this |
+| `db_init_error` in /health | DB unreachable during background init | Check Postgres plugin; run `run_db_init.py` |
+| `column "company_id" does not exist` | Old DB missing backfill | Phase 7 fix in `repair_existing_schema()` — redeploy |
+| `RuntimeError: DATABASE_URL is required` | Env var not set | Set in Railway Variables |
+| Login fails, weird JWT errors | Weak default SECRET_KEY | Set `SECRET_KEY` in Railway Variables |
+| SUPERVISOR 403 on start/complete trip | RBAC-007 — missing MANAGE_TRIPS | Fixed Phase 7 — redeploy |
+| `/route-intelligence/calculate` 403 | SEC-002 fix — now requires auth | Client must send Bearer token |

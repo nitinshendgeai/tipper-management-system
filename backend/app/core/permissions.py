@@ -4,8 +4,8 @@ Role-based permission definitions for multi-tenant access control.
 Roles (per company):
   SUPER_ADMIN — full access to all features
   MANAGER     — operational management, no user/settings management
-  SUPERVISOR  — trip creation and expense management
-  DRIVER      — read-only trips, own expense logging
+  SUPERVISOR  — full trip lifecycle + allocation + expense management
+  DRIVER      — read-only trips, own attendance, own expense logging
 """
 
 from enum import Enum
@@ -95,6 +95,9 @@ ROLE_PERMISSIONS: dict[str, List[Permission]] = {
         Permission.VIEW_DRIVERS,
         Permission.VIEW_ROUTES,
         Permission.CREATE_TRIPS,
+        Permission.MANAGE_TRIPS,    # Phase 7 fix (RBAC-007): SUPERVISOR must be able to
+                                    # start/complete/cancel trips and manage allocations.
+                                    # Was missing — broke the entire operational workflow.
         Permission.VIEW_TRIPS,
         Permission.MANAGE_EXPENSES,
         Permission.VIEW_ATTENDANCE,

@@ -1,8 +1,8 @@
 # Known Issues — Tipper Management ERP
 
-**Version:** 5.0.0  
-**Last Updated:** 2026-05-19  
-**Phase:** Production Hardening + Performance + Mobile Readiness — Phase 6 Complete  
+**Version:** 7.0.0
+**Last Updated:** 2026-05-19
+**Phase:** Full ERP Validation + Stabilization — Phase 7 Active
 
 ---
 
@@ -411,6 +411,53 @@ Cross-origin requests are allowed from any domain. In production this means any 
 
 ---
 
+## Phase 7 Issues Added
+
+### RBAC-007 — SUPERVISOR missing MANAGE_TRIPS (entire trip lifecycle broken)
+**Severity:** 🔴 Critical
+**File:** `backend/app/core/permissions.py`
+**Description:** SUPERVISOR role had `CREATE_TRIPS` but not `MANAGE_TRIPS`. Since `start_trip`, `complete_trip`, `cancel_trip` (trip_api.py) and `create_assignment`, `release_assignment` (allocation_api.py) all require `MANAGE_TRIPS`, SUPERVISOR could create a trip but could not start, complete, cancel, or even allocate a driver to a vehicle. The entire core ERP operational workflow was broken for the SUPERVISOR role.
+**Fix:** Added `Permission.MANAGE_TRIPS` to SUPERVISOR's permission list in `ROLE_PERMISSIONS`.
+**Status:** ✅ Fixed in Phase 7
+
+---
+
+### SEC-002 — `/route-intelligence/calculate` has no authentication
+**Severity:** 🔴 Critical
+**File:** `backend/app/api/route_intelligence_api.py`
+**Description:** The route intelligence endpoint had zero auth dependency (`Depends()`). Any unauthenticated caller could POST to `/route-intelligence/calculate` without a token and consume the backend's Google Maps API quota. Also bypasses tenant isolation entirely.
+**Fix:** Added `Depends(require_permission(Permission.CREATE_TRIPS))` to `calculate_route()` — requires SUPERVISOR or above.
+**Status:** ✅ Fixed in Phase 7
+
+---
+
+### TENANT-004 — `company_api.py` registration leaks raw exception detail
+**Severity:** 🟠 High
+**File:** `backend/app/api/company_api.py` — `register_company()`
+**Description:** The except block raised `HTTPException(detail=f"Registration failed: {exc}")`, leaking raw Python exception strings (including internal paths, SQL errors, and model names) to the API consumer.
+**Fix:** Exception is now logged server-side via `logger.error(..., exc_info=True)` and a generic `"Company registration failed due to a server error. Please try again."` message is returned to the client.
+**Status:** ✅ Fixed in Phase 7
+
+---
+
+### DB-004 — `company_id` column missing on pre-existing tables
+**Severity:** 🔴 Critical
+**File:** `backend/app/db/bootstrap.py` — `repair_existing_schema()`
+**Description:** On Railway, `repair_existing_schema()` failed with `ProgrammingError: column "company_id" does not exist` when trying to create the performance indexes. Root cause: `Base.metadata.create_all()` skips tables that already exist, so `company_id` (added to SQLAlchemy models later) was never added to older database tables. The index creation then tried to index a non-existent column.
+**Fix:** Added 7 `ALTER TABLE ... ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES tenant.companies(id) ON DELETE CASCADE` statements to `repair_existing_schema()`, placed before all `CREATE INDEX` statements. Fully idempotent.
+**Status:** ✅ Fixed in Phase 7
+
+---
+
+### DASH-001 — Dashboard makes 21+ separate DB queries per request
+**Severity:** 🟡 Medium
+**File:** `backend/app/api/dashboard_api.py` — `get_dashboard_stats()`
+**Description:** The dashboard stats endpoint issues approximately 21 separate `filter_by_company()` + `.scalar()` queries for vehicle counts (5), driver counts (3), route count (1), attendance (1), trip lifecycle counts (5), financial sums (3), plus 3 analytics service calls. While each query is fast with indexes, this is architecturally wasteful and will show latency at scale.
+**Fix:** Consolidate vehicle/driver/trip counts into single GROUP BY queries. Dashboard response latency will improve significantly. Deferred to Phase 8 as non-blocking — system is functional.
+**Status:** 📋 Backlog — Phase 8
+
+---
+
 ## Phase 2 + Phase 3 Fix Tracker
 
 | Issue ID | Description | Priority | Status |
@@ -445,3 +492,9 @@ Cross-origin requests are allowed from any domain. In production this means any 
 | BIZ-004 | vehicle_number unique constraint is global not per-company | 🟠 High | ✅ Fixed in Phase 6 |
 | LOG-001 | No structured logging — print() only | 🟡 Medium | ✅ Fixed in Phase 6 |
 | ERR-001 | Stack traces leak in 500 responses | 🟠 High | ✅ Fixed in Phase 6 |
+| RBAC-007 | SUPERVISOR missing MANAGE_TRIPS — can't start/complete/cancel/allocate | 🔴 Critical | ✅ Fixed in Phase 7 |
+| SEC-002 | /route-intelligence/calculate has no auth — API key exposed | 🔴 Critical | ✅ Fixed in Phase 7 |
+| TENANT-004 | company_api registration leaks raw Python exception to client | 🟠 High | ✅ Fixed in Phase 7 |
+| DEPLOY-001 | DEPLOYMENT_FLOW.md stale — showed old /docs healthcheck and blocking startup | 🟡 Medium | ✅ Fixed in Phase 7 |
+| DB-004 | company_id column missing on pre-existing tables — repair_existing_schema fails | 🔴 Critical | ✅ Fixed in Phase 7 (ALTER TABLE backfill before CREATE INDEX) |
+| DASH-001 | Dashboard makes 21+ separate DB queries per request | 🟡 Medium | 📋 Backlog — Phase 8 (consolidate with GROUP BY) |

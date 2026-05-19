@@ -43,6 +43,19 @@ def repair_existing_schema(engine: Engine) -> None:
         # Phase 4: link driver profile to auth.users for DRIVER self-attendance
         "ALTER TABLE IF EXISTS master.drivers ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES auth.users(id) ON DELETE SET NULL",
 
+        # ── Phase 6: Backfill company_id column on pre-existing tables ────────
+        # Base.metadata.create_all() skips tables that already exist, so older
+        # databases never received company_id when it was added to the models.
+        # These ALTER TABLE statements are idempotent — ADD COLUMN IF NOT EXISTS
+        # is a no-op when the column is already present.
+        "ALTER TABLE IF EXISTS master.vehicles ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES tenant.companies(id) ON DELETE CASCADE",
+        "ALTER TABLE IF EXISTS master.drivers ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES tenant.companies(id) ON DELETE CASCADE",
+        "ALTER TABLE IF EXISTS master.routes ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES tenant.companies(id) ON DELETE CASCADE",
+        "ALTER TABLE IF EXISTS master.driver_vehicle_assignments ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES tenant.companies(id) ON DELETE CASCADE",
+        "ALTER TABLE IF EXISTS operations.trips ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES tenant.companies(id) ON DELETE CASCADE",
+        "ALTER TABLE IF EXISTS operations.trip_expenses ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES tenant.companies(id) ON DELETE CASCADE",
+        "ALTER TABLE IF EXISTS operations.attendance ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES tenant.companies(id) ON DELETE CASCADE",
+
         # ── Phase 6: Performance indexes ──────────────────────────────────────
         # company_id indexes — core of multi-tenant isolation
         "CREATE INDEX IF NOT EXISTS idx_vehicles_company_id ON master.vehicles (company_id)",

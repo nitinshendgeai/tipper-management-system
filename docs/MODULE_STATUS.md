@@ -1,8 +1,8 @@
 # Module Status — Tipper Management ERP
 
-**Version:** 5.0.0  
-**Last Updated:** 2026-05-19  
-**Phase:** Production Hardening + Performance + Mobile Readiness — Phase 6 Complete  
+**Version:** 7.0.0
+**Last Updated:** 2026-05-19
+**Phase:** Full ERP Validation + Stabilization — Phase 7 Active
 
 ---
 
@@ -26,7 +26,7 @@
 | Config | `app/core/config.py` | ✅ Working | DATABASE_URL guard in place. Weak default SECRET_KEY. |
 | Security (JWT + bcrypt) | `app/core/security.py` | ✅ Working | hash_password, verify_password, create_access_token all functional |
 | Tenant Context | `app/core/tenant.py` | ✅ Working | contextvars-based, async-safe per-request isolation |
-| Permissions | `app/core/permissions.py` | ✅ Working | Clean enum-based RBAC with ROLE_PERMISSIONS dict |
+| Permissions | `app/core/permissions.py` | ✅ Working | Clean enum-based RBAC. Phase 7 (RBAC-007): MANAGE_TRIPS added to SUPERVISOR — fixes start/complete/cancel/allocate for entire operational workflow. |
 | DB Session | `app/db/session.py` | ✅ Working | pool_pre_ping=True, autoflush=False |
 | Bootstrap | `app/db/bootstrap.py` | ✅ Working | Called from startup. Phase 6 adds 15 performance indexes + per-company unique constraints (BIZ-003, BIZ-004). |
 | DB Init | `app/db/init_db.py` | ⚠️ Partial | `init_db()` defined but **never called** from `main.py` |
@@ -38,12 +38,12 @@
 | Module | File | Status | Notes |
 |---|---|---|---|
 | Authentication | `app/api/auth_api.py` | ⚠️ Partial | Login works. Phase 6: optional `company_slug` scopes login to tenant (AUTH-001 fixed). `/auth/me` still uses legacy `get_current_user` (email-only). |
-| Company Management | `app/api/company_api.py` | ✅ Working | Registration, duplicate check, default roles/settings, admin user creation all functional |
+| Company Management | `app/api/company_api.py` | ✅ Working | Registration, duplicate check, default roles/settings, admin user creation all functional. Phase 7: exception detail no longer leaked to client (TENANT-004). |
 | Vehicle Master | `app/api/vehicle_api.py` | ✅ Working | Full CRUD with tenant isolation and permission checks |
 | Driver Master | `app/api/driver_api.py` | ✅ Working | Full CRUD with tenant isolation and permission checks |
 | Route Master | `app/api/route_api.py` | ✅ Working | Full CRUD with tenant isolation and permission checks |
 | Shift Allocation | `app/api/allocation_api.py` | ✅ Working | Create, list, release assignments with vehicle/driver status sync |
-| Route Intelligence | `app/api/route_intelligence_api.py` | ⚠️ Partial | Google Maps integration works when key present. Fallback formula uses pseudo-random (SHA256 seed) — not real coordinates. |
+| Route Intelligence | `app/api/route_intelligence_api.py` | ✅ Working | Phase 7 (SEC-002): endpoint now requires auth (CREATE_TRIPS permission). Google Maps when key present, formula fallback otherwise. Response includes `source` field to distinguish. |
 | Trip Operations | `app/api/trip_api.py` | ✅ Working | Full lifecycle: CREATE → START → COMPLETE/CANCEL. FSM enforced. Phase 6: duplicate active trip check (ATTEND-002), structured logging for all lifecycle events. |
 | Trip Expenses | `app/api/trip_expense_api.py` | ✅ Working | Add/list/delete expenses per trip with tenant isolation |
 | Dashboard Analytics | `app/api/dashboard_api.py` | ✅ Working | All counters, financials, utilisation %, plus Phase 5 today/month KPIs. Company-scoped. |
@@ -122,8 +122,10 @@
 
 | Category | Total | ✅ Working | ⚠️ Partial | ❌ Broken | 🔒 Legacy |
 |---|---|---|---|---|---|
-| API Routers | 13 | 10 | 2 | 0 | 1 |
+| API Routers | 13 | 11 | 1 | 0 | 1 |
 | Models | 12 | 10 | 1 | 0 | 1 |
-| Core Modules | 9 | 6 | 2 | 0 | 1 |
+| Core Modules | 9 | 7 | 1 | 0 | 1 |
 | Schemas | 11 | 11 | 0 | 0 | 0 |
 | Services | 2 | 2 | 0 | 0 | 0 |
+
+**Phase 7 changes:** Route Intelligence: ⚠️ → ✅ (auth added). Permissions: updated SUPERVISOR RBAC. Company API: exception leak fixed.
