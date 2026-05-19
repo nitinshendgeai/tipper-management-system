@@ -15,7 +15,7 @@ Fallback behaviour when GOOGLE_MAPS_API_KEY is not set:
 import hashlib
 import httpx
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 
@@ -23,6 +23,8 @@ from app.core.config import (
     GOOGLE_MAPS_API_KEY,
     TIPPER_FUEL_EFFICIENCY_KM_PER_LITRE,
 )
+from app.api.dependencies import require_permission
+from app.core.permissions import Permission
 
 
 router = APIRouter()
@@ -94,10 +96,14 @@ def _diesel_from_km(distance_km: float) -> float:
     description=(
         "Calls Google Maps Distance Matrix API (backend-only). "
         "Falls back to formula estimate if API key is not configured. "
-        "Flutter frontend never sees the Google API key."
+        "Flutter frontend never sees the Google API key. "
+        "Requires authentication — SUPERVISOR or above (Phase 7 fix SEC-002)."
     ),
 )
-async def calculate_route(data: RouteCalculationRequest):
+async def calculate_route(
+    data: RouteCalculationRequest,
+    current_user=Depends(require_permission(Permission.CREATE_TRIPS)),
+):
 
     if not GOOGLE_MAPS_API_KEY:
         # No API key — return formula estimate
