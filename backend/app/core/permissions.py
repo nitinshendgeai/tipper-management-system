@@ -6,6 +6,12 @@ Roles (per company):
   MANAGER     — operational management, no user/settings management
   SUPERVISOR  — full trip lifecycle + allocation + expense management
   DRIVER      — read-only trips, own attendance, own expense logging
+
+Phase 9 additions:
+  MANAGE_MAINTENANCE / VIEW_MAINTENANCE — vehicle maintenance tracking
+  MANAGE_FUEL / VIEW_FUEL              — fuel entry management
+  MANAGE_DOCUMENTS / VIEW_DOCUMENTS    — document & permit tracking
+  VIEW_REPORTS                         — CSV / report export
 """
 
 from enum import Enum
@@ -49,6 +55,23 @@ class Permission(str, Enum):
     # Settings
     MANAGE_SETTINGS = "manage_settings"
 
+    # ── Phase 9: Enterprise modules ───────────────────────────────────────────
+
+    # Maintenance management
+    MANAGE_MAINTENANCE = "manage_maintenance"
+    VIEW_MAINTENANCE = "view_maintenance"
+
+    # Fuel management
+    MANAGE_FUEL = "manage_fuel"
+    VIEW_FUEL = "view_fuel"
+
+    # Document & permit tracking
+    MANAGE_DOCUMENTS = "manage_documents"
+    VIEW_DOCUMENTS = "view_documents"
+
+    # Reporting & CSV export
+    VIEW_REPORTS = "view_reports"
+
 
 ROLE_PERMISSIONS: dict[str, List[Permission]] = {
     "SUPER_ADMIN": [
@@ -70,6 +93,14 @@ ROLE_PERMISSIONS: dict[str, List[Permission]] = {
         Permission.VIEW_ATTENDANCE,
         Permission.MANAGE_ATTENDANCE,
         Permission.MANAGE_SETTINGS,
+        # Phase 9
+        Permission.MANAGE_MAINTENANCE,
+        Permission.VIEW_MAINTENANCE,
+        Permission.MANAGE_FUEL,
+        Permission.VIEW_FUEL,
+        Permission.MANAGE_DOCUMENTS,
+        Permission.VIEW_DOCUMENTS,
+        Permission.VIEW_REPORTS,
     ],
     "MANAGER": [
         Permission.VIEW_DASHBOARD,
@@ -88,6 +119,14 @@ ROLE_PERMISSIONS: dict[str, List[Permission]] = {
         Permission.MANAGE_EXPENSES,
         Permission.VIEW_ATTENDANCE,
         Permission.MANAGE_ATTENDANCE,
+        # Phase 9
+        Permission.MANAGE_MAINTENANCE,
+        Permission.VIEW_MAINTENANCE,
+        Permission.MANAGE_FUEL,
+        Permission.VIEW_FUEL,
+        Permission.MANAGE_DOCUMENTS,
+        Permission.VIEW_DOCUMENTS,
+        Permission.VIEW_REPORTS,
     ],
     "SUPERVISOR": [
         Permission.VIEW_DASHBOARD,
@@ -102,6 +141,11 @@ ROLE_PERMISSIONS: dict[str, List[Permission]] = {
         Permission.MANAGE_EXPENSES,
         Permission.VIEW_ATTENDANCE,
         Permission.MANAGE_ATTENDANCE,
+        # Phase 9: Supervisors can log fuel and view maintenance/docs
+        Permission.VIEW_MAINTENANCE,
+        Permission.MANAGE_FUEL,
+        Permission.VIEW_FUEL,
+        Permission.VIEW_DOCUMENTS,
     ],
     "DRIVER": [
         Permission.VIEW_DASHBOARD,
@@ -109,6 +153,9 @@ ROLE_PERMISSIONS: dict[str, List[Permission]] = {
         Permission.MANAGE_EXPENSES,
         Permission.VIEW_ATTENDANCE,
         Permission.MANAGE_ATTENDANCE,
+        # Phase 9: Drivers can view their own fuel entries and documents
+        Permission.VIEW_FUEL,
+        Permission.VIEW_DOCUMENTS,
     ],
 }
 
