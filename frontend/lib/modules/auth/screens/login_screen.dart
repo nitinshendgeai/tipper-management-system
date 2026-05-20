@@ -54,7 +54,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } else {
       setState(() {
         _errorMessage =
-            'Invalid company name, email, or password. Please check your credentials and try again.';
+            'Invalid email or password. Please check your credentials and try again.';
       });
     }
   }
@@ -228,27 +228,7 @@ class _LoginCard extends StatelessWidget {
                 const SizedBox(height: 20),
               ],
 
-              // ── Company name field (Phase 6: AUTH-001) ───────────────────
-              TextFormField(
-                controller: companyController,
-                keyboardType: TextInputType.text,
-                textInputAction: TextInputAction.next,
-                autocorrect: false,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(
-                  labelText: 'Company Name',
-                  hintText: 'Acme Transport Pvt. Ltd.',
-                  prefixIcon: Icon(Icons.business_rounded),
-                  helperText: 'Enter your registered company name',
-                ),
-                validator: (v) {
-                  // Optional — we allow blank for backward compat (single-company setups)
-                  // but show a hint if they try to submit without it.
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 16),
+              
 
               // ── Email field ──────────────────────────────────────────────
               TextFormField(
