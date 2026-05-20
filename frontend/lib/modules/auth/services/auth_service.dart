@@ -3,13 +3,13 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 
 import '../../../core/constants/api_constants.dart';
-import '../../../core/network/dio_client.dart';
 import '../../../core/storage/token_storage.dart';
 
 class AuthService {
-  /// Authenticates the user and persists the JWT token on success.
-  /// Returns a map with 'token' and 'must_change_password', or null on failure.
-  Future<Map<String, dynamic>?> login({
+  final Dio dio = Dio();
+
+  /// Authenticates the user and returns the token string, or null on failure.
+  Future<String?> login({
     required String email,
     required String password,
     String? companyName,
@@ -18,18 +18,14 @@ class AuthService {
       "email": email,
       "password": password,
     };
-    if (companyName != null && companyName.trim().isNotEmpty) {
-      payload["company_slug"] = companyName.trim();
-    }
 
     try {
-      final response = await DioClient.instance.post(
+      final response = await dio.post(
         '${ApiConstants.baseUrl}/auth/login',
         data: payload,
       );
 
       final token = response.data['access_token'] as String?;
-      final mustChange = response.data['must_change_password'] as bool? ?? false;
 
       if (token != null && token.isNotEmpty) {
         await TokenStorage.saveToken(token);
@@ -43,45 +39,30 @@ class AuthService {
             final claims = jsonDecode(decoded) as Map<String, dynamic>;
 
             final roleName = claims['role_name'] as String?;
-            if (roleName != null && roleName.isNotEmpty) {
-              await TokenStorage.saveRole(roleName);
-            }
+            if (roleName != null) await TokenStorage.saveRole(roleName);
 
-            final emailFromJwt = claims['sub'] as String?;
-            if (emailFromJwt != null && emailFromJwt.isNotEmpty) {
-              await TokenStorage.saveEmail(emailFromJwt);
-            }
+            final emailJwt = claims['sub'] as String?;
+            if (emailJwt != null) await TokenStorage.saveEmail(emailJwt);
           }
-        } catch (e) {
-          // Non-fatal
-        }
+        } catch (_) {}
 
-        // Fetch full name from /auth/me
+        // Fetch full name
         try {
-          final meResp = await DioClient.instance.get(
+          final meResp = await dio.get(
             '${ApiConstants.baseUrl}/auth/me',
             options: Options(headers: {'Authorization': 'Bearer $token'}),
           );
           final fullName = meResp.data['full_name'] as String?;
-          if (fullName != null && fullName.isNotEmpty) {
-            await TokenStorage.saveName(fullName);
-          }
-        } catch (e) {
-          // Non-fatal
-        }
-
-        return {'token': token, 'must_change_password': mustChange};
+          if (fullName != null) await TokenStorage.saveName(fullName);
+        } catch (_) {}
       }
-      return null;
-    } on DioException catch (e) {
-      // Return null so UI shows error message
-      return null;
+
+      return token;
     } catch (e) {
       return null;
     }
   }
 
-  /// Clears the stored token and role, logging the user out.
   Future<void> logout() async {
     await TokenStorage.clearAll();
   }
