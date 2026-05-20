@@ -12,11 +12,13 @@ Designed for future extensibility:
 
 Current alert types:
   OVERDUE_TRIP       — trip in STARTED status for too long (> 8 hours)
-  EXCESSIVE_EXPENSE  — single trip expense > threshold (₹10,000)
+  EXCESSIVE_EXPENSE  — single trip expense > threshold (Rs.10,000)
   LOW_ATTENDANCE     — fewer than N drivers punched in today vs. active fleet
   INACTIVE_VEHICLE   — vehicle AVAILABLE but no trips in last 7 days
   INACTIVE_DRIVER    — driver AVAILABLE but no trips in last 7 days
   HIGH_CANCELLATION  — >20% trip cancellation rate this week
+  DOCUMENT_EXPIRY    — document expiring within 30 days or already expired
+  MAINTENANCE_DUE    — scheduled maintenance not completed on time
 """
 
 from datetime import date, datetime, timedelta
@@ -28,17 +30,21 @@ from app.models.trip_expense import TripExpense
 from app.models.vehicle import Vehicle, VehicleStatus
 from app.models.driver import Driver, DriverStatus
 from app.models.attendance import DriverAttendance, AttendanceStatus
+from app.models.document import DocumentRecord
+from app.models.maintenance import VehicleMaintenance, MaintenanceStatus
 from app.schemas.analytics_schema import OperationalAlert, AlertType, AlertSeverity
 from app.db.tenant_queries import filter_by_company
 
 
-# ─── Thresholds (tuneable per-company in Phase 6) ────────────────────────────
+# ─── Thresholds (tuneable per-company in future) ─────────────────────────────
 
-OVERDUE_TRIP_HOURS       = 8        # trips active > this many hours
-EXCESSIVE_EXPENSE_INR    = 10_000   # single expense amount threshold
-LOW_ATTENDANCE_PCT       = 50.0     # < this % of drivers on duty = alert
-INACTIVE_DAYS            = 7        # vehicle/driver idle for this many days
-HIGH_CANCELLATION_PCT    = 20.0     # cancellation rate threshold
+OVERDUE_TRIP_HOURS        = 8        # trips active > this many hours
+EXCESSIVE_EXPENSE_INR     = 10_000   # single expense amount threshold
+LOW_ATTENDANCE_PCT        = 50.0     # < this % of drivers on duty = alert
+INACTIVE_DAYS             = 7        # vehicle/driver idle for this many days
+HIGH_CANCELLATION_PCT     = 20.0     # cancellation rate threshold
+DOCUMENT_EXPIRY_WARN_DAYS = 30       # warn this many days before expiry
+MAINTENANCE_OVERDUE_DAYS  = 0        # scheduled_date < today = overdue
 
 
 # ─── Individual detectors ─────────────────────────────────────────────────────
@@ -62,7 +68,7 @@ def _detect_overdue_trips(company_id, db: Session) -> list[OperationalAlert]:
             severity=AlertSeverity.HIGH,
             title="Trip Overdue",
             message=(
-                f"Trip #{trip.id} ({trip.source_location} → {trip.destination_location}) "
+                f"Trip #{trip.id} ({trip.source_location} to {trip.destination_location}) "
                 f"has been active for {hours}h — exceeds {OVERDUE_TRIP_HOURS}h limit."
             ),
             entity_type="trip",
@@ -94,8 +100,8 @@ def _detect_excessive_expenses(company_id, db: Session) -> list[OperationalAlert
             severity=AlertSeverity.MEDIUM,
             title="Excessive Expense",
             message=(
-                f"Expense of ₹{exp.amount:,.0f} ({exp.expense_type}) on Trip #{exp.trip_id} "
-                f"exceeds threshold of ₹{EXCESSIVE_EXPENSE_INR:,}."
+                f"Expense of Rs.{exp.amount:,.0f} ({exp.expense_type}) on Trip #{exp.trip_id} "
+                f"exceeds threshold of Rs.{EXCESSIVE_EXPENSE_INR:,}."
             ),
             entity_type="trip",
             entity_id=exp.trip_id,
@@ -143,15 +149,9 @@ def _detect_low_attendance(company_id, db: Session) -> list[OperationalAlert]:
 
 
 def _detect_inactive_vehicles(company_id, db: Session) -> list[OperationalAlert]:
-    """
-    Vehicles in AVAILABLE status with no trips in the last INACTIVE_DAYS days.
-
-    Phase 6 optimisation (ANLT-002): replaced N+1 per-vehicle queries with a
-    single NOT EXISTS correlated subquery — one DB round-trip for the whole fleet.
-    """
+    """Vehicles in AVAILABLE status with no trips in the last INACTIVE_DAYS days."""
     cutoff = date.today() - timedelta(days=INACTIVE_DAYS)
 
-    # Subquery: does this vehicle have ANY trip in the cutoff window?
     recent_trip_exists = (
         exists()
         .where(
@@ -191,15 +191,9 @@ def _detect_inactive_vehicles(company_id, db: Session) -> list[OperationalAlert]
 
 
 def _detect_inactive_drivers(company_id, db: Session) -> list[OperationalAlert]:
-    """
-    Drivers AVAILABLE with no trips in the last INACTIVE_DAYS days.
-
-    Phase 6 optimisation (ANLT-002): replaced N+1 per-driver queries with a
-    single NOT EXISTS correlated subquery — one DB round-trip for the whole fleet.
-    """
+    """Drivers AVAILABLE with no trips in the last INACTIVE_DAYS days."""
     cutoff = date.today() - timedelta(days=INACTIVE_DAYS)
 
-    # Subquery: does this driver have ANY trip in the cutoff window?
     recent_trip_exists = (
         exists()
         .where(
@@ -240,7 +234,8 @@ def _detect_inactive_drivers(company_id, db: Session) -> list[OperationalAlert]:
 
 def _detect_high_cancellation(company_id, db: Session) -> list[OperationalAlert]:
     """Trip cancellation rate this week exceeds threshold."""
-    monday, today = (date.today() - timedelta(days=date.today().weekday())), date.today()
+    monday = date.today() - timedelta(days=date.today().weekday())
+    today = date.today()
     week_trips = (
         filter_by_company(db.query(Trip), Trip)
         .filter(Trip.trip_date >= monday, Trip.trip_date <= today)
@@ -268,6 +263,93 @@ def _detect_high_cancellation(company_id, db: Session) -> list[OperationalAlert]
     return []
 
 
+def _detect_document_expiry(company_id, db: Session) -> list[OperationalAlert]:
+    """
+    Documents expiring within DOCUMENT_EXPIRY_WARN_DAYS days, or already expired.
+    CRITICAL if expired or expiring today, HIGH if within warning window.
+    """
+    today = date.today()
+    warn_cutoff = today + timedelta(days=DOCUMENT_EXPIRY_WARN_DAYS)
+
+    expiring_docs = (
+        filter_by_company(db.query(DocumentRecord), DocumentRecord)
+        .filter(
+            DocumentRecord.expiry_date != None,
+            DocumentRecord.expiry_date <= warn_cutoff,
+        )
+        .order_by(DocumentRecord.expiry_date)
+        .all()
+    )
+
+    alerts = []
+    for doc in expiring_docs:
+        days_left = (doc.expiry_date - today).days
+        if days_left < 0:
+            severity = AlertSeverity.CRITICAL
+            status_str = f"EXPIRED {abs(days_left)} day(s) ago"
+        elif days_left == 0:
+            severity = AlertSeverity.CRITICAL
+            status_str = "expires TODAY"
+        else:
+            severity = AlertSeverity.HIGH
+            status_str = f"expires in {days_left} day(s)"
+
+        alerts.append(OperationalAlert(
+            alert_type=AlertType.DOCUMENT_EXPIRY,
+            severity=severity,
+            title="Document Expiry",
+            message=(
+                f"{doc.document_name} ({doc.category}) — {status_str}. "
+                f"Document number: {doc.document_number or 'N/A'}."
+            ),
+            entity_type="document",
+            entity_id=doc.id,
+            entity_label=doc.document_name,
+            triggered_at=datetime.utcnow(),
+        ))
+    return alerts
+
+
+def _detect_maintenance_overdue(company_id, db: Session) -> list[OperationalAlert]:
+    """
+    Maintenance records in SCHEDULED or IN_PROGRESS with scheduled_date in the past.
+    HIGH if overdue > 3 days, MEDIUM otherwise.
+    """
+    today = date.today()
+
+    overdue = (
+        filter_by_company(db.query(VehicleMaintenance), VehicleMaintenance)
+        .join(Vehicle, VehicleMaintenance.vehicle_id == Vehicle.id)
+        .filter(
+            VehicleMaintenance.status.in_([
+                MaintenanceStatus.SCHEDULED,
+                MaintenanceStatus.IN_PROGRESS,
+            ]),
+            VehicleMaintenance.scheduled_date < today,
+        )
+        .all()
+    )
+
+    alerts = []
+    for m in overdue:
+        days_overdue = (today - m.scheduled_date).days
+        alerts.append(OperationalAlert(
+            alert_type=AlertType.MAINTENANCE_DUE,
+            severity=AlertSeverity.HIGH if days_overdue > 3 else AlertSeverity.MEDIUM,
+            title="Maintenance Overdue",
+            message=(
+                f"{m.maintenance_type} maintenance for vehicle ID {m.vehicle_id} "
+                f"was scheduled for {m.scheduled_date} — overdue by {days_overdue} day(s). "
+                f"Status: {m.status}."
+            ),
+            entity_type="vehicle",
+            entity_id=m.vehicle_id,
+            entity_label=f"Vehicle #{m.vehicle_id}",
+            triggered_at=datetime.utcnow(),
+        ))
+    return alerts
+
+
 # ─── Main entry point ─────────────────────────────────────────────────────────
 
 def get_operational_alerts(company_id, db: Session) -> list[OperationalAlert]:
@@ -285,6 +367,8 @@ def get_operational_alerts(company_id, db: Session) -> list[OperationalAlert]:
     }
 
     all_alerts: list[OperationalAlert] = []
+    all_alerts.extend(_detect_document_expiry(company_id, db))
+    all_alerts.extend(_detect_maintenance_overdue(company_id, db))
     all_alerts.extend(_detect_overdue_trips(company_id, db))
     all_alerts.extend(_detect_high_cancellation(company_id, db))
     all_alerts.extend(_detect_excessive_expenses(company_id, db))

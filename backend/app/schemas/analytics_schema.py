@@ -75,7 +75,6 @@ class VehicleUtilization(BaseModel):
     avg_trip_distance_km: float
     current_status: str             # AVAILABLE | ASSIGNED | ON_TRIP | MAINTENANCE
 
-
 class FleetAnalytics(BaseModel):
     """
     Fleet-level utilization report — MANAGER / SUPER_ADMIN.
@@ -171,6 +170,8 @@ class AlertType:
     INACTIVE_DRIVER     = "INACTIVE_DRIVER"
     DELAYED_TRIP        = "DELAYED_TRIP"
     HIGH_CANCELLATION   = "HIGH_CANCELLATION"
+    DOCUMENT_EXPIRY     = "DOCUMENT_EXPIRY"
+    MAINTENANCE_DUE     = "MAINTENANCE_DUE"
 
 
 class OperationalAlert(BaseModel):
@@ -186,7 +187,7 @@ class OperationalAlert(BaseModel):
     message: str
     entity_type: str        # "trip" | "vehicle" | "driver" | "fleet"
     entity_id: Optional[int] = None
-    entity_label: Optional[str] = None     # e.g. vehicle number, driver name
+    entity_label: Optional[str] = None
     triggered_at: datetime
 
 
