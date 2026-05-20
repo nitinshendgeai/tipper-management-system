@@ -28,6 +28,16 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(
 # If not set, route intelligence falls back to a formula-based estimate.
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
 
+# ─── CORS ─────────────────────────────────────────────────────────────────────
+# Comma-separated list of allowed frontend origins.
+# Set ALLOWED_ORIGINS in Railway environment variables to lock down production.
+# Example: https://tipper-frontend-ar.up.railway.app,https://yourdomain.com
+_raw_origins = os.getenv(
+    "ALLOWED_ORIGINS",
+    "https://tipper-frontend-ar.up.railway.app"
+)
+ALLOWED_ORIGINS: list[str] = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+
 # ─── Fleet constants ─────────────────────────────────────────────────────────
 # Tipper truck average fuel efficiency (km per litre) — used for diesel estimate
 TIPPER_FUEL_EFFICIENCY_KM_PER_LITRE = float(
