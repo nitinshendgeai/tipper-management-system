@@ -57,4 +57,8 @@ class User(Base):
 
     is_active = Column(Boolean, default=True)
 
+    # Phase 11 (AUTH-004): set True on company registration so admin is forced
+    # to change the auto-generated password on first login.
+    must_change_password = Column(Boolean, default=False, nullable=False)
+
     created_at = Column(DateTime, default=datetime.utcnow)

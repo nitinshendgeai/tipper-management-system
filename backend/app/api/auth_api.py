@@ -1,9 +1,13 @@
 import logging
+import time
+from collections import defaultdict
+from threading import Lock
 
 from fastapi import (
     APIRouter,
     HTTPException,
-    Depends
+    Depends,
+    Request,
 )
 
 from sqlalchemy import func as sa_func
@@ -19,7 +23,8 @@ from app.schemas.auth_schema import (
 
 from app.core.security import (
     verify_password,
-    create_access_token
+    create_access_token,
+    hash_password,
 )
 
 from app.api.dependencies import get_current_tenant_user
@@ -27,12 +32,33 @@ from app.api.dependencies import get_current_tenant_user
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# ─── Login rate limiter (in-memory, per IP) ───────────────────────────────────
+# Max 10 attempts per IP per 60 seconds. No external dependency required.
+_rate_limit_lock    = Lock()
+_rate_limit_store: dict[str, list[float]] = defaultdict(list)
+_RATE_LIMIT_MAX     = 10
+_RATE_LIMIT_WINDOW  = 60   # seconds
+
+
+def _check_rate_limit(ip: str) -> None:
+    now = time.time()
+    with _rate_limit_lock:
+        attempts = _rate_limit_store[ip]
+        # Remove attempts outside the window
+        _rate_limit_store[ip] = [t for t in attempts if now - t < _RATE_LIMIT_WINDOW]
+        if len(_rate_limit_store[ip]) >= _RATE_LIMIT_MAX:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Too many login attempts. Please wait {_RATE_LIMIT_WINDOW}s and try again.",
+            )
+        _rate_limit_store[ip].append(now)
+
 
 @router.post(
     "/login",
     response_model=TokenResponse
 )
-def login(data: LoginRequest):
+def login(data: LoginRequest, request: Request):
     """
     Authenticate a user and return a JWT access token.
 
@@ -42,7 +68,10 @@ def login(data: LoginRequest):
     If `company_slug` is omitted the endpoint falls back to email-only lookup
     for backward-compatibility with existing Flutter clients that haven't yet
     been updated to send the company name.
+
+    Phase 11 (API-003): rate-limited to 10 attempts per IP per 60 seconds.
     """
+    _check_rate_limit(request.client.host if request.client else "unknown")
 
     db = SessionLocal()
     try:
@@ -127,7 +156,8 @@ def login(data: LoginRequest):
 
         return {
             "access_token": access_token,
-            "token_type": "bearer"
+            "token_type": "bearer",
+            "must_change_password": user.must_change_password,
         }
     finally:
         db.close()
@@ -138,7 +168,7 @@ def current_user(
     current_user: User = Depends(get_current_tenant_user)
 ):
     """
-    Return the authenticated user's profile.
+    Return the authenticated user profile.
 
     Phase 2 fix (AUTH-002): switched from legacy get_current_user (email-only
     lookup) to get_current_tenant_user (email + company_id lookup) for proper
@@ -153,3 +183,56 @@ def current_user(
         "company_id": str(current_user.company_id) if current_user.company_id else None,
         "user_role_id": str(current_user.user_role_id) if current_user.user_role_id else None,
     }
+
+
+@router.post("/change-password")
+def change_password(
+    data: dict,
+    current_user: User = Depends(get_current_tenant_user),
+):
+    """
+    Change the authenticated user's password.
+
+    Phase 11 (AUTH-004): After changing, clears the must_change_password flag.
+
+    Request body:
+      { "current_password": "...", "new_password": "..." }
+    """
+    db = SessionLocal()
+    try:
+        current_password = data.get("current_password", "")
+        new_password     = data.get("new_password", "")
+
+        if not current_password or not new_password:
+            raise HTTPException(
+                status_code=400,
+                detail="current_password and new_password are required.",
+            )
+
+        if len(new_password) < 8:
+            raise HTTPException(
+                status_code=400,
+                detail="New password must be at least 8 characters.",
+            )
+
+        user = db.query(User).filter(User.id == current_user.id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found.")
+
+        if not verify_password(current_password, user.password_hash):
+            raise HTTPException(
+                status_code=400,
+                detail="Current password is incorrect.",
+            )
+
+        user.password_hash       = hash_password(new_password)
+        user.must_change_password = False
+        db.commit()
+
+        logger.info(
+            "Password changed — user_id=%s company_id=%s",
+            user.id, user.company_id,
+        )
+        return {"message": "Password changed successfully."}
+    finally:
+        db.close()

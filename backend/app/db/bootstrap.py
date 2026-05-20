@@ -129,6 +129,9 @@ def repair_existing_schema(engine: Engine) -> None:
         # documents — company_id if table pre-existed
         "ALTER TABLE IF EXISTS operations.documents ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES tenant.companies(id) ON DELETE CASCADE",
 
+        # Phase 11: must_change_password — backfill existing users table
+        "ALTER TABLE IF EXISTS auth.users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE",
+
         # ── Phase 9: Performance indexes for new enterprise tables ────────────
         # maintenance_logs
         "CREATE INDEX IF NOT EXISTS idx_maintenance_company_id ON operations.maintenance_logs (company_id)",

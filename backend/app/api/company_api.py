@@ -12,6 +12,7 @@ On registration the system automatically creates:
 """
 
 import logging
+import secrets
 import uuid
 
 from fastapi import APIRouter, HTTPException, status
@@ -123,20 +124,33 @@ def register_company(data: CompanyRegisterRequest):
             db.query(Role).filter(Role.name == "Admin").first()
         )
 
+        # Phase 11 (AUTH-004): use caller-supplied password or generate a
+        # cryptographically secure random one. Flag for forced change on first login.
+        admin_password = (
+            data.initial_password.strip()
+            if data.initial_password
+            else secrets.token_urlsafe(12)
+        )
+
         admin_user = User(
             email=admin_email,
-            password_hash=hash_password("admin1234"),
+            password_hash=hash_password(admin_password),
             full_name=f"Admin — {data.company_name}",
             company_id=company.id,
             user_role_id=super_admin_role.id if super_admin_role else None,
             role_id=legacy_admin_role.id if legacy_admin_role else None,
+            must_change_password=True,
         )
         db.add(admin_user)
 
         db.commit()
         db.refresh(company)
 
-        return CompanyResponse.model_validate(company)
+        # Return admin credentials in response — shown ONCE, never stored
+        response = CompanyResponse.model_validate(company)
+        response.admin_email    = admin_email
+        response.admin_password = admin_password
+        return response
 
     except HTTPException:
         db.rollback()

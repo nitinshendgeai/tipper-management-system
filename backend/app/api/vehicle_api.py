@@ -7,6 +7,7 @@ from fastapi import (
 from sqlalchemy.orm import Session
 
 from app.models.vehicle import Vehicle
+from app.models.company import CompanySettings
 
 from app.schemas.vehicle_schema import (
     VehicleCreate,
@@ -40,11 +41,24 @@ def create_vehicle(
     ).first()
 
     if existing_vehicle:
-
         raise HTTPException(
             status_code=400,
             detail="Vehicle already exists"
         )
+
+    # Phase 11 (GAP-005): enforce subscription vehicle limit
+    settings = db.query(CompanySettings).filter(
+        CompanySettings.company_id == current_user.company_id
+    ).first()
+    if settings:
+        current_count = filter_by_company(
+            db.query(Vehicle), Vehicle
+        ).filter(Vehicle.is_active == True).count()
+        if current_count >= settings.max_vehicles:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Vehicle limit reached ({settings.max_vehicles} vehicles). Upgrade your subscription to add more.",
+            )
 
     vehicle = Vehicle(
         company_id=current_user.company_id,

@@ -7,6 +7,8 @@ from fastapi import (
 from sqlalchemy.orm import Session
 
 from app.models.driver import Driver
+from app.models.company import CompanySettings
+from app.models.user import User as UserModel
 
 from app.schemas.driver_schema import (
     DriverCreate,
@@ -43,11 +45,24 @@ def create_driver(
     ).first()
 
     if existing_driver:
-
         raise HTTPException(
             status_code=400,
             detail="Driver with this license number already exists"
         )
+
+    # Phase 11 (GAP-005): enforce subscription user limit
+    settings = db.query(CompanySettings).filter(
+        CompanySettings.company_id == current_user.company_id
+    ).first()
+    if settings:
+        current_count = filter_by_company(
+            db.query(UserModel), UserModel
+        ).filter(UserModel.is_active == True).count()
+        if current_count >= settings.max_users:
+            raise HTTPException(
+                status_code=403,
+                detail=f"User limit reached ({settings.max_users} users). Upgrade your subscription to add more.",
+            )
 
     driver = Driver(
         company_id=current_user.company_id,

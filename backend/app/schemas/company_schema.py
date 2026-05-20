@@ -15,6 +15,9 @@ class CompanyRegisterRequest(BaseModel):
     email: EmailStr
     gst_number: Optional[str] = Field(None, max_length=20)
     address: Optional[str] = None
+    # Phase 11 (AUTH-004): caller may supply an initial admin password.
+    # If omitted, a random secure password is generated and returned once.
+    initial_password: Optional[str] = Field(None, min_length=8, max_length=72)
 
 
 class CompanyResponse(BaseModel):
@@ -27,6 +30,10 @@ class CompanyResponse(BaseModel):
     address: Optional[str] = None
     is_active: bool
     created_at: datetime
+    # Phase 11: returned once on registration so caller knows the admin password.
+    # Never stored — only present in the registration response.
+    admin_email: Optional[str] = None
+    admin_password: Optional[str] = None
 
     class Config:
         from_attributes = True
