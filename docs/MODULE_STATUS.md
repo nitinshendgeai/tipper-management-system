@@ -1,8 +1,8 @@
 # Module Status — Tipper Management ERP
 
-**Version:** 10.0.0
+**Version:** 11.0.0
 **Last Updated:** 2026-05-20
-**Phase:** Phase 10 — Production SaaS Maturity + Automation
+**Phase:** Phase 11 — Security Hardening + SaaS Maturity
 
 ---
 
@@ -11,6 +11,7 @@
 | Module | Router | Status | Phase |
 |---|---|---|---|
 | Authentication | `/auth` | ✅ Production | 1 |
+| Change Password | `/auth/change-password` | ✅ Production | 11 |
 | Company Registration | `/companies` | ✅ Production | 1 |
 | Vehicle Master | `/vehicles` | ✅ Production | 2 |
 | Driver Master | `/drivers` | ✅ Production | 2 |
@@ -36,6 +37,7 @@
 | Module | Screen | Status | Phase |
 |---|---|---|---|
 | Authentication | LoginScreen | ✅ Production | 1 |
+| Change Password | ChangePasswordScreen | ✅ Production | 11 |
 | Dashboard | DashboardScreen | ✅ Production | 5 |
 | Vehicles | VehicleScreen | ✅ Production | 2 |
 | Drivers | DriverScreen | ✅ Production | 2 |
@@ -46,6 +48,22 @@
 | Maintenance | MaintenanceScreen | ✅ Production | 10 |
 | Fuel | FuelScreen | ✅ Production | 10 |
 | Documents | DocumentScreen | ✅ Production | 10 |
+| Users | UserScreen | ✅ Production | 11 |
+
+---
+
+## Security Status
+
+| Feature | Status |
+|---|---|
+| JWT authentication | ✅ HS256, 60min expiry |
+| CORS lockdown | ✅ Origin whitelist via env var |
+| Login rate limiting | ✅ 10/IP/60s in-memory |
+| Forced password change | ✅ On first login |
+| Subscription limits | ✅ Enforced on vehicle/user create |
+| Tenant isolation | ✅ filter_by_company() on all queries |
+| RBAC | ✅ 4 roles, 25+ permissions |
+| SECRET_KEY | ⚠️ Must be set in Railway env |
 
 ---
 
@@ -54,20 +72,6 @@
 | Service | Description | Status |
 |---|---|---|
 | DB Init Thread | Schema + table creation on startup | ✅ Production |
-| Automation Scheduler | Vehicle/driver sync, overdue trip detection | ✅ Production (Phase 10) |
-| Alert Service | On-demand operational alerts | ✅ Production |
+| Automation Scheduler | Vehicle/driver sync every 5 min | ✅ Production |
+| Alert Service | On-demand operational alerts (8 types) | ✅ Production |
 | Analytics Service | KPI aggregation queries | ✅ Production |
-
----
-
-## Infrastructure
-
-| Component | Technology | Status |
-|---|---|---|
-| Backend | FastAPI + Python 3.11 | ✅ Deployed on Railway |
-| Database | PostgreSQL (Railway managed) | ✅ Production |
-| Frontend | Flutter Web | ✅ Deployed on Railway |
-| Auth | JWT (HS256, 60min expiry) | ✅ Production |
-| CORS | Origin whitelist via env var | ✅ Fixed Phase 10 |
-| Storage (web) | Browser localStorage | ✅ Fixed Phase 10 |
-| Storage (native) | flutter_secure_storage | ✅ Production |

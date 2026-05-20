@@ -1,8 +1,8 @@
 # Known Issues — Tipper Management ERP
 
-**Version:** 10.0.0
+**Version:** 11.0.0
 **Last Updated:** 2026-05-20
-**Phase:** Phase 10 — Production SaaS Maturity + Automation
+**Phase:** Phase 11 — Security Hardening + SaaS Maturity
 
 ---
 
@@ -10,116 +10,94 @@
 
 | Level | Meaning |
 |---|---|
-| 🔴 Critical | Could cause data breach, auth bypass, or production outage |
-| 🟠 High | Functional bug or significant risk requiring near-term fix |
-| 🟡 Medium | Degraded behaviour or technical debt with workaround |
+| 🔴 Critical | Data breach, auth bypass, or production outage |
+| 🟠 High | Functional bug or significant risk |
+| 🟡 Medium | Degraded behaviour with workaround |
 | 🟢 Low | Code quality / minor improvement |
 
 ---
 
-## Phase 10 Issues Added
+## Phase 11 Issues Fixed
 
-### SEC-003 — CORS was fully open (allow_origins=["*"])
-**Severity:** 🟠 High
-**File:** `backend/app/main.py`
-**Description:** CORS allowed requests from any origin in production.
-**Fix:** Restricted to `ALLOWED_ORIGINS` env var (defaults to Railway frontend URL). Methods and headers also locked down.
-**Status:** ✅ Fixed in Phase 10
+### AUTH-004 — Hardcoded admin1234 password
+**Severity:** 🟠 High → ✅ Fixed
+**Fix:** Registration now generates a cryptographically secure random password (or accepts caller-supplied password). Returned once in response. `must_change_password=True` set on account — forced change screen shown on first login.
 
----
+### GAP-005 — Subscription limits not enforced
+**Severity:** 🟡 Medium → ✅ Fixed
+**Fix:** Vehicle create checks `max_vehicles`, driver/user create checks `max_users` against `CompanySettings`. Returns HTTP 403 with upgrade message if limit exceeded.
 
-### FE-007 — dart:html top-level import breaks iOS/Android compilation
-**Severity:** 🔴 Critical
-**File:** `frontend/lib/core/storage/token_storage.dart`
-**Description:** `import 'dart:html'` at the top level caused compile failure on native targets. Runtime `kIsWeb` check does not prevent compile-time import resolution.
-**Fix:** Refactored using Flutter conditional imports (`if (dart.library.html)`). Three files: `storage_interface.dart`, `storage_web.dart`, `storage_native.dart`.
-**Status:** ✅ Fixed in Phase 10
+### API-003 — No rate limiting on login
+**Severity:** 🟠 High → ✅ Fixed
+**Fix:** In-memory rate limiter — 10 attempts per IP per 60 seconds. Returns HTTP 429. No external dependency required.
 
----
-
-### GAP-006 — No user management API
-**Severity:** 🟡 Medium
-**File:** `backend/app/api/user_api.py` (new)
-**Description:** `MANAGE_USERS` permission existed but no `/users/` endpoint. Admins couldn't add staff.
-**Fix:** Built full CRUD at `/users/` — list, create, get, update, deactivate. Tenant-isolated, RBAC-gated.
-**Status:** ✅ Fixed in Phase 10
-
----
-
-### GAP-007 — No document expiry or maintenance overdue alerts
-**Severity:** 🟠 High
-**File:** `backend/app/services/alert_service.py`
-**Description:** Phase 9 added document and maintenance modules but no alert detectors for expiry/overdue.
-**Fix:** Added `_detect_document_expiry()` (CRITICAL if expired, HIGH if within 30 days) and `_detect_maintenance_overdue()` (HIGH if >3 days overdue).
-**Status:** ✅ Fixed in Phase 10
-
----
-
-### GAP-008 — No frontend screens for Phase 9 modules
-**Severity:** 🟠 High
-**Files:** `frontend/lib/modules/maintenance/`, `fuel/`, `document/`
-**Description:** Maintenance, Fuel, and Document APIs existed in backend but had no Flutter UI.
-**Fix:** Built full screens and services for all 3 modules. Added Enterprise section to app drawer (MANAGER+ only).
-**Status:** ✅ Fixed in Phase 10
-
----
-
-### GAP-009 — No operational automation (stuck vehicles/drivers)
-**Severity:** 🟠 High
-**File:** `backend/app/services/automation_service.py` (new)
-**Description:** Vehicles/drivers could get stuck in ON_TRIP status after trip completion due to partial failures. No background correction.
-**Fix:** Background scheduler runs every 5 minutes — frees stuck vehicles/drivers, logs overdue trips. `GET /automation/status` for observability.
-**Status:** ✅ Fixed in Phase 10
+### GAP-008 — No User Management Flutter screen
+**Severity:** 🟠 High → ✅ Fixed
+**Fix:** Full `UserScreen` built — list, add, edit, deactivate. Added to drawer under Enterprise section (MANAGER+ only).
 
 ---
 
 ## Open / Backlog Issues
 
-### AUTH-003 — Hardcoded weak default SECRET_KEY
+### AUTH-003 — Weak default SECRET_KEY
 **Severity:** 🔴 Critical
-**Status:** 🔧 Must set `SECRET_KEY` in Railway environment variables
+**Description:** If `SECRET_KEY` not set in Railway env, defaults to `tipper-secret-key`.
+**Fix:** Set `SECRET_KEY` in Railway environment variables immediately.
+**Status:** 🔧 Must fix manually in Railway dashboard
 
-### AUTH-004 — Default admin1234 password on registration
-**Severity:** 🟠 High
-**Status:** 📋 Backlog — Phase 11
-
-### GAP-005 — Subscription limits not enforced
-**Severity:** 🟡 Medium
-**Status:** 📋 Backlog — Phase 11
-
-### DOC-001 — Document file upload (metadata-only, no S3)
+### DOC-001 — Document file upload not supported
 **Severity:** 🟢 Low
-**Status:** 📋 Backlog — Phase 11
+**Description:** Documents module stores metadata only. No file upload/storage.
+**Fix:** Integrate AWS S3 or GCS in Phase 12.
+**Status:** 📋 Backlog — Phase 12
 
-### API-003 — No rate limiting on login endpoint
-**Severity:** 🟠 High
-**Status:** 📋 Backlog — Phase 11
+### AUTH-005 — No token invalidation on logout
+**Severity:** 🟡 Medium
+**Description:** JWTs are stateless — stolen tokens valid until expiry (60 min).
+**Fix:** Add token blacklist (Redis) or short expiry + refresh token pattern.
+**Status:** 📋 Backlog — Phase 12
+
+### DB-003 — company_id nullable on all models
+**Severity:** 🟡 Medium
+**Description:** All tenant-scoped models have `company_id = nullable=True` as migration artifact.
+**Fix:** After validating all rows, change to `nullable=False`.
+**Status:** 📋 Backlog — Phase 12
+
+### RATE-001 — Rate limiter is in-memory (resets on restart)
+**Severity:** 🟡 Medium
+**Description:** Login rate limiter uses Python dict — resets on every Railway deploy/restart. Brute force across restarts is possible.
+**Fix:** Use Redis for persistent rate limiting in Phase 12.
+**Status:** 📋 Backlog — Phase 12
 
 ---
 
-## Historical Fix Tracker
+## Full Fix History
 
-| Issue | Description | Status |
+| Issue | Description | Fixed |
 |---|---|---|
-| AUTH-001 | Login email-only lookup | ✅ Fixed Phase 6 |
-| AUTH-002 | /auth/me legacy dependency | ✅ Fixed Phase 2 |
-| AUTH-006 | role_id=1 hardcoded | ✅ Fixed Phase 2 |
-| START-001 | Bootstrap not called | ✅ Fixed Phase 2 |
-| DB-001 | Duplicate get_db() | ✅ Fixed Phase 2+3 |
-| TENANT-001..003 | Unscoped enrichment queries | ✅ Fixed Phase 3 |
-| FE-001..003 | Auth headers, role decode, drawer RBAC | ✅ Fixed Phase 3 |
-| ANLT-001..002 | N+1 queries, memory scans | ✅ Fixed Phase 6 |
-| PERF-001 | Missing DB indexes | ✅ Fixed Phase 6 |
-| BIZ-003..004 | Global unique constraints | ✅ Fixed Phase 6 |
-| LOG-001 | No structured logging | ✅ Fixed Phase 6 |
-| ERR-001 | Stack trace leaks | ✅ Fixed Phase 6 |
-| RBAC-007 | SUPERVISOR missing MANAGE_TRIPS | ✅ Fixed Phase 7 |
-| SEC-002 | Route intelligence no auth | ✅ Fixed Phase 7 |
-| DB-004 | company_id missing on old tables | ✅ Fixed Phase 7 |
-| DASH-001 | 21+ queries per dashboard request | ✅ Fixed Phase 9 |
-| SEC-003 | CORS wildcard | ✅ Fixed Phase 10 |
-| FE-007 | dart:html breaks native builds | ✅ Fixed Phase 10 |
-| GAP-006 | No user management API | ✅ Fixed Phase 10 |
-| GAP-007 | No doc expiry / maintenance alerts | ✅ Fixed Phase 10 |
-| GAP-008 | No frontend Phase 9 screens | ✅ Fixed Phase 10 |
-| GAP-009 | No operational automation | ✅ Fixed Phase 10 |
+| AUTH-001 | Login email-only lookup | Phase 6 |
+| AUTH-002 | /auth/me legacy dependency | Phase 2 |
+| AUTH-004 | Hardcoded admin1234 password | Phase 11 |
+| AUTH-006 | role_id=1 hardcoded | Phase 2 |
+| START-001 | Bootstrap not called on startup | Phase 2 |
+| DB-001 | Duplicate get_db() in API files | Phase 2+3 |
+| TENANT-001..003 | Unscoped enrichment queries | Phase 3 |
+| FE-001..003 | Auth headers, role decode, drawer RBAC | Phase 3 |
+| ANLT-001..002 | N+1 queries, memory alert scans | Phase 6 |
+| PERF-001 | Missing DB indexes | Phase 6 |
+| BIZ-003..004 | Global unique constraints | Phase 6 |
+| LOG-001 | No structured logging | Phase 6 |
+| ERR-001 | Stack trace leaks in 500 responses | Phase 6 |
+| RBAC-007 | SUPERVISOR missing MANAGE_TRIPS | Phase 7 |
+| SEC-002 | Route intelligence no auth | Phase 7 |
+| DB-004 | company_id missing on pre-existing tables | Phase 7 |
+| DASH-001 | 21+ DB queries per dashboard request | Phase 9 |
+| SEC-003 | CORS wildcard allow_origins=* | Phase 10 |
+| FE-007 | dart:html breaks native builds | Phase 10 |
+| GAP-006 | No user management API | Phase 10 |
+| GAP-007 | No doc expiry / maintenance alerts | Phase 10 |
+| GAP-008 | No frontend Phase 9+11 screens | Phase 10+11 |
+| GAP-009 | No operational automation | Phase 10 |
+| AUTH-004 | Hardcoded admin1234 | Phase 11 |
+| GAP-005 | Subscription limits not enforced | Phase 11 |
+| API-003 | No login rate limiting | Phase 11 |
