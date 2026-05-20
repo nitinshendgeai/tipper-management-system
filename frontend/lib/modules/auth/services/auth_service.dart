@@ -10,12 +10,10 @@ class AuthService {
   final Dio dio = Dio();
 
   /// Authenticates the user and persists the JWT token on success.
-  /// Returns the token string if successful, null otherwise.
+  /// Returns a map with 'token' and 'must_change_password', or null on failure.
   ///
-  /// Phase 6 (AUTH-001): added optional [companyName] parameter.
-  /// When provided, login is scoped to that specific company — preventing
-  /// cross-tenant auth in multi-tenant mode. Safe to omit for backward compat.
-  Future<String?> login({
+  /// Phase 11 (AUTH-004): also returns must_change_password flag from backend.
+  Future<Map<String, dynamic>?> login({
     required String email,
     required String password,
     String? companyName,
@@ -41,6 +39,7 @@ class AuthService {
       print('[AuthService] Response body: ${response.data}');
 
       final token = response.data['access_token'] as String?;
+      final mustChange = response.data['must_change_password'] as bool? ?? false;
 
       if (token != null && token.isNotEmpty) {
         print('[AuthService] Token received, saving to storage.');
@@ -85,13 +84,14 @@ class AuthService {
           }
         } catch (e) {
           print('[AuthService] WARNING: Could not fetch /auth/me: $e');
-          // Non-fatal — dashboard header will fall back to email
         }
       } else {
         print('[AuthService] WARNING: Response succeeded but no access_token found in body.');
       }
 
-      return token;
+      return token != null
+          ? {'token': token, 'must_change_password': mustChange}
+          : null;
     } on DioException catch (e) {
       print('[AuthService] DioException during login:');
       print('  Type    : ${e.type}');

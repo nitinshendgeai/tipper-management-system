@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../services/auth_service.dart';
 import '../../dashboard/dashboard_screen.dart';
+import 'change_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -26,26 +27,33 @@ class _LoginScreenState extends State<LoginScreen> {
   // ─── Login action ─────────────────────────────────────────────────────────
 
   Future<void> _login() async {
-    // Clear previous error and validate form
     setState(() => _errorMessage = null);
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => isLoading = true);
 
-    final token = await authService.login(
+    final result = await authService.login(
       email: emailController.text.trim(),
       password: passwordController.text,
     );
 
     if (!mounted) return;
-
     setState(() => isLoading = false);
 
-    if (token != null) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const DashboardScreen()),
-      );
+    if (result != null) {
+      final mustChange = result['must_change_password'] as bool? ?? false;
+      if (mustChange) {
+        // Phase 11: force password change before accessing app
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+        );
+      }
     } else {
       setState(() {
         _errorMessage =
