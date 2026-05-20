@@ -34,6 +34,7 @@ from app.api.maintenance_api import router as maintenance_router
 from app.api.fuel_api import router as fuel_router
 from app.api.document_api import router as document_router
 from app.api.reports_api import router as reports_router
+from app.api.user_api import router as user_router
 
 from app.models.company import Company, CompanySettings, UserRole
 from app.models.user import User
@@ -264,3 +265,4 @@ app.include_router(maintenance_router,       prefix="/maintenance",      tags=["
 app.include_router(fuel_router,              prefix="/fuel",             tags=["Fuel Management"])
 app.include_router(document_router,          prefix="/documents",        tags=["Document Management"])
 app.include_router(reports_router,           prefix="/reports",          tags=["Reports & Export"])
+app.include_router(user_router,              prefix="/users",            tags=["User Management"])
