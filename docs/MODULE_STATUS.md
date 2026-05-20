@@ -1,8 +1,8 @@
 # Module Status — Tipper Management ERP
 
-**Version:** 7.0.0
+**Version:** 9.0.0
 **Last Updated:** 2026-05-19
-**Phase:** Full ERP Validation + Stabilization — Phase 7 Active
+**Phase:** Enterprise ERP Expansion — Phase 9 Active
 
 ---
 
@@ -26,7 +26,7 @@
 | Config | `app/core/config.py` | ✅ Working | DATABASE_URL guard in place. Weak default SECRET_KEY. |
 | Security (JWT + bcrypt) | `app/core/security.py` | ✅ Working | hash_password, verify_password, create_access_token all functional |
 | Tenant Context | `app/core/tenant.py` | ✅ Working | contextvars-based, async-safe per-request isolation |
-| Permissions | `app/core/permissions.py` | ✅ Working | Clean enum-based RBAC. Phase 7 (RBAC-007): MANAGE_TRIPS added to SUPERVISOR — fixes start/complete/cancel/allocate for entire operational workflow. |
+| Permissions | `app/core/permissions.py` | ✅ Working | Clean enum-based RBAC. Phase 7 (RBAC-007): MANAGE_TRIPS added to SUPERVISOR. Phase 9: 7 new permissions added (MANAGE_MAINTENANCE, VIEW_MAINTENANCE, MANAGE_FUEL, VIEW_FUEL, MANAGE_DOCUMENTS, VIEW_DOCUMENTS, VIEW_REPORTS). |
 | DB Session | `app/db/session.py` | ✅ Working | pool_pre_ping=True, autoflush=False |
 | Bootstrap | `app/db/bootstrap.py` | ✅ Working | Called from startup. Phase 6 adds 15 performance indexes + per-company unique constraints (BIZ-003, BIZ-004). |
 | DB Init | `app/db/init_db.py` | ⚠️ Partial | `init_db()` defined but **never called** from `main.py` |
@@ -46,8 +46,12 @@
 | Route Intelligence | `app/api/route_intelligence_api.py` | ✅ Working | Phase 7 (SEC-002): endpoint now requires auth (CREATE_TRIPS permission). Google Maps when key present, formula fallback otherwise. Response includes `source` field to distinguish. |
 | Trip Operations | `app/api/trip_api.py` | ✅ Working | Full lifecycle: CREATE → START → COMPLETE/CANCEL. FSM enforced. Phase 6: duplicate active trip check (ATTEND-002), structured logging for all lifecycle events. |
 | Trip Expenses | `app/api/trip_expense_api.py` | ✅ Working | Add/list/delete expenses per trip with tenant isolation |
-| Dashboard Analytics | `app/api/dashboard_api.py` | ✅ Working | All counters, financials, utilisation %, plus Phase 5 today/month KPIs. Company-scoped. |
+| Dashboard Analytics | `app/api/dashboard_api.py` | ✅ Working | Phase 9 (DASH-001 fixed): consolidated from 21+ scalar queries to 7 GROUP BY aggregations. Vehicle/driver/trip status counts each use one query. All counters, financials, utilisation %, Phase 5 KPIs. Company-scoped. |
 | Analytics API | `app/api/analytics_api.py` | ✅ Working | Phase 5: /analytics/operational, /driver/me, /fleet, /alerts, /supervisor/snapshot |
+| Maintenance Management | `app/api/maintenance_api.py` | ✅ Working | Phase 9: Full CRUD. Tenant-isolated, vehicle-linked. Status FSM: SCHEDULED→IN_PROGRESS→COMPLETED. By-vehicle listing. |
+| Fuel Management | `app/api/fuel_api.py` | ✅ Working | Phase 9: Full CRUD + analytics. Trip-linked, bulk-enriched vehicle/driver names. Analytics endpoint (totals, avg cost/litre). |
+| Document Management | `app/api/document_api.py` | ✅ Working | Phase 9: Metadata-only CRUD. Expiry tracking (is_expired, days_to_expiry computed server-side). /expiring?days=N endpoint. |
+| Reports & Export | `app/api/reports_api.py` | ✅ Working | Phase 9: CSV export for trips, expenses, fuel, maintenance, attendance. StreamingResponse — no memory buffering. |
 | Admin Dashboard | `app/api/admin_api.py` | ❌ Broken | Stub endpoint — returns mock message only. Uses legacy `RoleChecker` (role_id=1 check, not RBAC). No real admin functionality. |
 | Dependencies | `app/api/dependencies.py` | ⚠️ Partial | `get_current_tenant_user` is correct. `get_current_user` (legacy, email-only) still exposed and used by `/auth/me` and admin_api. |
 | Role Checker | `app/api/role_checker.py` | 🔒 Legacy | `RoleChecker` class uses legacy `role_id` check. Should not be extended. |
@@ -122,10 +126,10 @@
 
 | Category | Total | ✅ Working | ⚠️ Partial | ❌ Broken | 🔒 Legacy |
 |---|---|---|---|---|---|
-| API Routers | 13 | 11 | 1 | 0 | 1 |
-| Models | 12 | 10 | 1 | 0 | 1 |
+| API Routers | 17 | 15 | 1 | 0 | 1 |
+| Models | 15 | 13 | 1 | 0 | 1 |
 | Core Modules | 9 | 7 | 1 | 0 | 1 |
-| Schemas | 11 | 11 | 0 | 0 | 0 |
+| Schemas | 14 | 14 | 0 | 0 | 0 |
 | Services | 2 | 2 | 0 | 0 | 0 |
 
-**Phase 7 changes:** Route Intelligence: ⚠️ → ✅ (auth added). Permissions: updated SUPERVISOR RBAC. Company API: exception leak fixed.
+**Phase 9 changes:** +4 new API routers (maintenance, fuel, documents, reports), +3 new models, +3 new schemas. Dashboard DASH-001 fixed (21+ → 7 GROUP BY queries). +7 new RBAC permissions.
