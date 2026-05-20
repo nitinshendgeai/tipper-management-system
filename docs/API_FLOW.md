@@ -1,8 +1,8 @@
 # API Flow — Tipper Management ERP
 
-**Version:** 5.0.0  
-**Last Updated:** 2026-05-19  
-**Phase:** Full ERP Validation + Stabilization — Phase 7 Complete  
+**Version:** 6.0.0  
+**Last Updated:** 2026-05-20  
+**Phase:** Enterprise ERP Expansion — Phase 9 Complete  
 **Base URL (Production):** `https://tipper-management-system.up.railway.app`  
 **Docs URL:** `https://tipper-management-system.up.railway.app/docs`
 
@@ -362,6 +362,153 @@ Response: SupervisorSnapshot {
 
 ---
 
+### 10. Maintenance Management (Phase 9)
+
+```
+POST /maintenance/
+Permission: MANAGE_MAINTENANCE (MANAGER, SUPER_ADMIN)
+Body: {
+  vehicle_id,
+  maintenance_type: ROUTINE | REPAIR | TYRE | INSPECTION | OTHER,
+  description,
+  scheduled_date (optional),
+  cost (optional, >= 0),
+  odometer_km (optional),
+  vendor_name (optional),
+  notes (optional)
+}
+Response: MaintenanceResponse { id, vehicle_id, vehicle_number, maintenance_type,
+           status, description, scheduled_date, completed_date, cost, ... }
+
+GET /maintenance/                     → List all for company        (VIEW_MAINTENANCE)
+GET /maintenance/{id}                 → Get single record           (VIEW_MAINTENANCE)
+PUT /maintenance/{id}                 → Update (status, cost, etc.) (MANAGE_MAINTENANCE)
+DELETE /maintenance/{id}              → Delete record               (MANAGE_MAINTENANCE)
+GET /maintenance/vehicle/{vehicle_id} → By-vehicle history          (VIEW_MAINTENANCE)
+
+Status FSM: SCHEDULED → IN_PROGRESS → COMPLETED / CANCELLED
+
+Available to:
+  SUPER_ADMIN, MANAGER  → full CRUD (MANAGE_MAINTENANCE)
+  SUPERVISOR            → read-only (VIEW_MAINTENANCE)
+```
+
+---
+
+### 11. Fuel Management (Phase 9)
+
+```
+POST /fuel/
+Permission: MANAGE_FUEL (SUPERVISOR, MANAGER, SUPER_ADMIN)
+Body: {
+  vehicle_id,
+  fuel_date,
+  quantity_litres (> 0),
+  cost_per_litre (optional),
+  total_cost (auto-computed if cost_per_litre provided),
+  driver_id (optional),
+  trip_id (optional),
+  odometer_km (optional),
+  fuel_station (optional),
+  notes (optional)
+}
+Response: FuelEntryResponse { id, vehicle_id, vehicle_number, driver_id, driver_name,
+           trip_id, fuel_date, quantity_litres, cost_per_litre, total_cost, ... }
+
+GET /fuel/                        → List all entries for company   (VIEW_FUEL)
+GET /fuel/analytics               → Aggregate analytics            (VIEW_FUEL)
+GET /fuel/{id}                    → Get single entry               (VIEW_FUEL)
+PUT /fuel/{id}                    → Update entry                   (MANAGE_FUEL)
+DELETE /fuel/{id}                 → Delete entry                   (MANAGE_FUEL)
+GET /fuel/vehicle/{vehicle_id}    → By-vehicle fuel history        (VIEW_FUEL)
+
+Analytics response:
+GET /fuel/analytics → FuelAnalytics {
+  total_entries, total_litres, total_cost,
+  avg_cost_per_litre, avg_litres_per_fill,
+  vehicles_tracked
+}
+
+Available to:
+  SUPER_ADMIN, MANAGER, SUPERVISOR → full CRUD (MANAGE_FUEL)
+  DRIVER                           → read-only (VIEW_FUEL)
+```
+
+---
+
+### 12. Document Management (Phase 9)
+
+```
+POST /documents/
+Permission: MANAGE_DOCUMENTS (MANAGER, SUPER_ADMIN)
+Body: {
+  category: DRIVER | VEHICLE | INSURANCE | PERMIT | OTHER,
+  document_name,
+  document_number (optional),
+  vehicle_id (optional),
+  driver_id (optional),
+  issue_date (optional),
+  expiry_date (optional),
+  file_path (optional — placeholder for future S3/GCS),
+  notes (optional)
+}
+Response: DocumentResponse { id, category, document_name, document_number,
+           vehicle_id, driver_id, issue_date, expiry_date,
+           is_expired, days_to_expiry,   ← computed server-side, not stored
+           created_at, updated_at }
+
+GET /documents/                     → List all documents            (VIEW_DOCUMENTS)
+GET /documents/expiring?days=30     → Expiring within N days        (VIEW_DOCUMENTS)
+GET /documents/{id}                 → Get single document           (VIEW_DOCUMENTS)
+PUT /documents/{id}                 → Update metadata               (MANAGE_DOCUMENTS)
+DELETE /documents/{id}              → Delete record                 (MANAGE_DOCUMENTS)
+
+Expiry tracking:
+  is_expired     = (expiry_date < today)
+  days_to_expiry = (expiry_date - today).days  [negative if expired]
+
+Available to:
+  SUPER_ADMIN, MANAGER → full CRUD (MANAGE_DOCUMENTS)
+  SUPERVISOR, DRIVER   → read-only (VIEW_DOCUMENTS)
+```
+
+---
+
+### 13. Reports & CSV Export (Phase 9)
+
+```
+Permission: VIEW_REPORTS (SUPER_ADMIN, MANAGER only)
+All endpoints return: StreamingResponse (no in-memory buffering)
+Content-Disposition: attachment; filename="<report>.csv"
+
+GET /reports/trips/csv
+Query params: from_date (YYYY-MM-DD), to_date, status
+Columns: id, vehicle_number, driver_name, route_label, trip_status,
+         trip_date, start_km, end_km, revenue_amount, diesel_used,
+         trip_advance, toll_expense, driver_bata, remarks
+
+GET /reports/expenses/csv
+Query params: from_date, to_date
+Columns: id, trip_id, expense_type, amount, remarks, created_at
+
+GET /reports/fuel/csv
+Query params: from_date, to_date
+Columns: id, vehicle_id, driver_id, trip_id, fuel_date, quantity_litres,
+         cost_per_litre, total_cost, odometer_km, fuel_station
+
+GET /reports/maintenance/csv
+Query params: from_date, to_date
+Columns: id, vehicle_id, maintenance_type, status, description,
+         scheduled_date, completed_date, cost, vendor_name
+
+GET /reports/attendance/csv
+Query params: from_date, to_date
+Columns: id, driver_id, shift_date, punch_in_time, punch_out_time,
+         is_active, total_hours
+```
+
+---
+
 ## RBAC Permission Matrix (Route-Level)
 
 | Endpoint | SUPER_ADMIN | MANAGER | SUPERVISOR | DRIVER |
@@ -382,6 +529,26 @@ Response: SupervisorSnapshot {
 | PUT /trips/{id}/complete | ✅ | ✅ | ✅ | ❌ |
 | POST /trips/{id}/expenses | ✅ | ✅ | ✅ | ✅ |
 | GET /dashboard/stats | ✅ | ✅ | ✅ | ✅ |
+| POST /maintenance/ | ✅ | ✅ | ❌ | ❌ |
+| GET /maintenance/ | ✅ | ✅ | ✅ | ❌ |
+| GET /maintenance/{id} | ✅ | ✅ | ✅ | ❌ |
+| PUT /maintenance/{id} | ✅ | ✅ | ❌ | ❌ |
+| DELETE /maintenance/{id} | ✅ | ✅ | ❌ | ❌ |
+| POST /fuel/ | ✅ | ✅ | ✅ | ❌ |
+| GET /fuel/ | ✅ | ✅ | ✅ | ✅ |
+| GET /fuel/analytics | ✅ | ✅ | ✅ | ✅ |
+| PUT /fuel/{id} | ✅ | ✅ | ✅ | ❌ |
+| DELETE /fuel/{id} | ✅ | ✅ | ✅ | ❌ |
+| POST /documents/ | ✅ | ✅ | ❌ | ❌ |
+| GET /documents/ | ✅ | ✅ | ✅ | ✅ |
+| GET /documents/expiring | ✅ | ✅ | ✅ | ✅ |
+| PUT /documents/{id} | ✅ | ✅ | ❌ | ❌ |
+| DELETE /documents/{id} | ✅ | ✅ | ❌ | ❌ |
+| GET /reports/trips/csv | ✅ | ✅ | ❌ | ❌ |
+| GET /reports/expenses/csv | ✅ | ✅ | ❌ | ❌ |
+| GET /reports/fuel/csv | ✅ | ✅ | ❌ | ❌ |
+| GET /reports/maintenance/csv | ✅ | ✅ | ❌ | ❌ |
+| GET /reports/attendance/csv | ✅ | ✅ | ❌ | ❌ |
 
 ---
 

@@ -1,8 +1,8 @@
 # System Architecture — Tipper Management ERP
 
-**Version:** 3.0.0  
-**Last Updated:** 2026-05-19  
-**Phase:** Full ERP Validation + Stabilization — Phase 7 Complete  
+**Version:** 4.0.0  
+**Last Updated:** 2026-05-20  
+**Phase:** Enterprise ERP Expansion — Phase 9 Complete  
 **Status:** Production-deployed (Railway)
 
 ---
@@ -66,9 +66,15 @@ Tipper Management ERP is a multi-tenant SaaS platform for managing tipper truck 
 │  │   Router     │ │  Router (Maps AI) │ │  Routers         │  │
 │  └──────────────┘ └──────────────────┘ └───────────────────┘  │
 │                                                                 │
-│  ┌────────────────────┐  ┌──────────────────────────────────┐  │
-│  │  Dashboard Router  │  │  Admin Router (legacy)           │  │
-│  └────────────────────┘  └──────────────────────────────────┘  │
+│  ┌────────────────┐ ┌────────────────┐ ┌─────────────────────┐ │
+│  │ Dashboard +    │ │ Attendance +   │ │  Analytics +        │ │
+│  │ Admin Routers  │ │ Analytics      │ │  Alerts Routers     │ │
+│  └────────────────┘ └────────────────┘ └─────────────────────┘ │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │  Phase 9 Enterprise Routers                             │  │
+│  │  Maintenance | Fuel | Documents | Reports (CSV)         │  │
+│  └──────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │  SQLAlchemy ORM — 4 PostgreSQL Schemas                  │  │
@@ -83,7 +89,8 @@ Tipper Management ERP is a multi-tenant SaaS platform for managing tipper truck 
 │  Schema: auth       → roles, users                              │
 │  Schema: tenant     → companies, company_settings, user_roles   │
 │  Schema: master     → vehicles, drivers, routes, assignments    │
-│  Schema: operations → trips, trip_expenses                      │
+│  Schema: operations → trips, trip_expenses, attendance,         │
+│                       maintenance_logs, fuel_entries, documents  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -125,6 +132,10 @@ Live operational records — all rows scoped by `company_id`.
 |---|---|
 | `operations.trips` | Full trip lifecycle (CREATED → STARTED → COMPLETED/CANCELLED) |
 | `operations.trip_expenses` | Itemized expenses per trip |
+| `operations.attendance` | Driver punch-in/out shift records |
+| `operations.maintenance_logs` | Vehicle maintenance events with status FSM (Phase 9) |
+| `operations.fuel_entries` | Fuel fill-up records with cost and mileage tracking (Phase 9) |
+| `operations.documents` | Document metadata with expiry tracking — no binary storage (Phase 9) |
 
 ---
 
@@ -198,7 +209,7 @@ Monitor via `GET /health`:
 }
 ```
 
-**Why `repair_existing_schema()` exists:** `Base.metadata.create_all()` never modifies existing tables. Pre-existing Railway databases need the repair step to backfill missing `company_id` columns (7 tables) and create performance indexes (15 indexes). All SQL is idempotent — safe on fresh and existing databases. Phase 7 (DB-004): `ALTER TABLE ADD COLUMN IF NOT EXISTS` statements placed before all `CREATE INDEX` statements to ensure column exists before indexing.
+**Why `repair_existing_schema()` exists:** `Base.metadata.create_all()` never modifies existing tables. Pre-existing Railway databases need the repair step to backfill missing `company_id` columns (7 tables) and create performance indexes (15 indexes). All SQL is idempotent — safe on fresh and existing databases. Phase 7 (DB-004): `ALTER TABLE ADD COLUMN IF NOT EXISTS` statements placed before all `CREATE INDEX` statements to ensure column exists before indexing. Phase 9: Added 3 more backfill groups (maintenance_logs, fuel_entries, documents) + 10 more performance indexes for the new enterprise tables.
 
 ---
 
@@ -285,3 +296,62 @@ Railway.io
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | No | `60` | JWT expiry duration |
 | `GOOGLE_MAPS_API_KEY` | No | `""` | Falls back to formula if missing |
 | `TIPPER_FUEL_EFFICIENCY_KM_PER_LITRE` | No | `5.0` | Used in diesel estimates |
+
+---
+
+## Phase 9 — Enterprise Module Architecture
+
+### New Modules (Phase 9)
+
+| Module | Router | DB Table | Permission Pair |
+|---|---|---|---|
+| Maintenance Management | `maintenance_api.py` | `operations.maintenance_logs` | MANAGE_MAINTENANCE / VIEW_MAINTENANCE |
+| Fuel Management | `fuel_api.py` | `operations.fuel_entries` | MANAGE_FUEL / VIEW_FUEL |
+| Document Management | `document_api.py` | `operations.documents` | MANAGE_DOCUMENTS / VIEW_DOCUMENTS |
+| Reports & CSV Export | `reports_api.py` | (query-only, no table) | VIEW_REPORTS |
+
+### Architectural Patterns Followed
+
+All Phase 9 modules use the same patterns as the core ERP:
+
+- **Tenant isolation** — all tables have `company_id UUID FK → tenant.companies.id`. All queries go through `filter_by_company()`.
+- **RBAC via `require_permission()`** — write endpoints use `MANAGE_*`, read endpoints use `VIEW_*`.
+- **Bulk enrichment** — list endpoints use a single IN-clause vehicle/driver lookup followed by dict mapping. No N+1 per-row queries.
+- **Idempotent bootstrap** — `repair_existing_schema()` backfills columns and creates indexes using `ALTER TABLE IF EXISTS ADD COLUMN IF NOT EXISTS` + `CREATE INDEX IF NOT EXISTS`.
+- **No binary storage** — `documents` table stores file metadata only. `file_path` is a VARCHAR placeholder for future S3/GCS integration.
+- **StreamingResponse CSV** — Reports API never buffers datasets in memory; uses a generator that yields CSV rows on demand.
+
+### Performance Indexes Added (Phase 9)
+
+| Table | Indexes |
+|---|---|
+| `operations.maintenance_logs` | `company_id`, `vehicle_id`, `(company_id, status)`, `(company_id, maintenance_type)` |
+| `operations.fuel_entries` | `company_id`, `vehicle_id`, `(company_id, vehicle_id)`, `fuel_date` |
+| `operations.documents` | `company_id`, `expiry_date`, `(company_id, category)`, `vehicle_id`, `driver_id` |
+
+### Dashboard Query Consolidation (DASH-001 — Phase 9)
+
+`dashboard_api.py` was refactored from 21+ scalar queries to 7 GROUP BY aggregations:
+
+| Query | Was | Now |
+|---|---|---|
+| Vehicle status counts | 5 scalar queries | 1 `GROUP BY status` |
+| Driver status counts | 3 scalar queries | 1 `GROUP BY status` |
+| Trip status + financials + KPIs | 8+ scalar queries | 1 `case()` conditional aggregation |
+| Attendance today | 1 scalar | 1 scalar (unchanged) |
+| Phase 5 KPIs (today/month) | 4 scalar queries | 1 combined query |
+| Routes + total | 2 scalar queries | 1 scalar |
+
+### Phase 10 — Planned Enterprise Modules
+
+| Module | Planned DB Table | Notes |
+|---|---|---|
+| Vendor Management | `master.vendors` | Garages, fuel stations, parts suppliers |
+| Driver Payroll | `operations.payroll_entries` | Salary, incentives, deductions |
+| Tyre Management | `operations.tyre_logs` | Per-tyre install/removal, wear tracking |
+| Invoice / Billing | `operations.invoices` + `invoice_items` | Customer invoice from trips |
+| Notifications | `operations.notification_queue` | Background scheduler + FCM push |
+| Driver KYC | (extends `master.drivers`) | Aadhaar, license scans, background check |
+| GPS Tracking | `operations.gps_events` | Real-time location events |
+
+See `docs/ENTERPRISE_MODULES.md` for full Phase 10 DB schemas and RBAC strategy.

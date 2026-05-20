@@ -1,8 +1,8 @@
 # RBAC Matrix — Tipper Management ERP
 
-**Version:** 5.0.0  
-**Last Updated:** 2026-05-19  
-**Phase:** Full ERP Validation + Stabilization — Phase 7 Complete  
+**Version:** 6.0.0  
+**Last Updated:** 2026-05-20  
+**Phase:** Enterprise ERP Expansion — Phase 9 Complete  
 
 ---
 
@@ -43,6 +43,13 @@ Defined in `app/core/permissions.py` as `Permission(str, Enum)`:
 | `MANAGE_SETTINGS` | `manage_settings` | Modify company settings |
 | `VIEW_ATTENDANCE` | `view_attendance` | View attendance records |
 | `MANAGE_ATTENDANCE` | `manage_attendance` | Punch in / punch out drivers |
+| `MANAGE_MAINTENANCE` | `manage_maintenance` | Create/edit/delete maintenance logs |
+| `VIEW_MAINTENANCE` | `view_maintenance` | View maintenance logs and history |
+| `MANAGE_FUEL` | `manage_fuel` | Create/edit/delete fuel entries |
+| `VIEW_FUEL` | `view_fuel` | View fuel entries and analytics |
+| `MANAGE_DOCUMENTS` | `manage_documents` | Create/edit/delete document records |
+| `VIEW_DOCUMENTS` | `view_documents` | View document records and expiry |
+| `VIEW_REPORTS` | `view_reports` | Download CSV reports for all modules |
 
 ---
 
@@ -68,6 +75,13 @@ Defined in `app/core/permissions.py` as `Permission(str, Enum)`:
 | MANAGE_SETTINGS | ✅ | ❌ | ❌ | ❌ |
 | VIEW_ATTENDANCE | ✅ | ✅ | ✅ | ✅ |
 | MANAGE_ATTENDANCE | ✅ | ✅ | ✅ | ✅ |
+| MANAGE_MAINTENANCE | ✅ | ✅ | ❌ | ❌ |
+| VIEW_MAINTENANCE | ✅ | ✅ | ✅ | ❌ |
+| MANAGE_FUEL | ✅ | ✅ | ✅ | ❌ |
+| VIEW_FUEL | ✅ | ✅ | ✅ | ✅ |
+| MANAGE_DOCUMENTS | ✅ | ✅ | ❌ | ❌ |
+| VIEW_DOCUMENTS | ✅ | ✅ | ✅ | ✅ |
+| VIEW_REPORTS | ✅ | ✅ | ❌ | ❌ |
 
 ---
 
@@ -122,6 +136,30 @@ Defined in `app/core/permissions.py` as `Permission(str, Enum)`:
 | GET | `/analytics/driver/me` | VIEW_TRIPS (DRIVER only — role-enforced) |
 | GET | `/analytics/alerts` | VIEW_DASHBOARD (SUPERVISOR+, all roles) |
 | GET | `/analytics/supervisor/snapshot` | VIEW_DASHBOARD (all roles) |
+| POST | `/maintenance/` | MANAGE_MAINTENANCE |
+| GET | `/maintenance/` | VIEW_MAINTENANCE |
+| GET | `/maintenance/{id}` | VIEW_MAINTENANCE |
+| PUT | `/maintenance/{id}` | MANAGE_MAINTENANCE |
+| DELETE | `/maintenance/{id}` | MANAGE_MAINTENANCE |
+| GET | `/maintenance/vehicle/{vehicle_id}` | VIEW_MAINTENANCE |
+| POST | `/fuel/` | MANAGE_FUEL |
+| GET | `/fuel/` | VIEW_FUEL |
+| GET | `/fuel/analytics` | VIEW_FUEL |
+| GET | `/fuel/{id}` | VIEW_FUEL |
+| PUT | `/fuel/{id}` | MANAGE_FUEL |
+| DELETE | `/fuel/{id}` | MANAGE_FUEL |
+| GET | `/fuel/vehicle/{vehicle_id}` | VIEW_FUEL |
+| POST | `/documents/` | MANAGE_DOCUMENTS |
+| GET | `/documents/` | VIEW_DOCUMENTS |
+| GET | `/documents/expiring` | VIEW_DOCUMENTS |
+| GET | `/documents/{id}` | VIEW_DOCUMENTS |
+| PUT | `/documents/{id}` | MANAGE_DOCUMENTS |
+| DELETE | `/documents/{id}` | MANAGE_DOCUMENTS |
+| GET | `/reports/trips/csv` | VIEW_REPORTS |
+| GET | `/reports/expenses/csv` | VIEW_REPORTS |
+| GET | `/reports/fuel/csv` | VIEW_REPORTS |
+| GET | `/reports/maintenance/csv` | VIEW_REPORTS |
+| GET | `/reports/attendance/csv` | VIEW_REPORTS |
 
 ---
 
@@ -196,6 +234,24 @@ def check_permission(user_role: str, required_permission: Permission) -> bool:
 | SUPERVISOR blocked from operational workflow | MANAGE_TRIPS missing from SUPERVISOR — start/complete/cancel/allocate all 403 | 🔴 Critical | ✅ Fixed Phase 7 (RBAC-007) |
 | Route intelligence endpoint unauthenticated | POST /route-intelligence/calculate had zero Depends() — fully public | 🔴 Critical | ✅ Fixed Phase 7 (SEC-002) |
 | Allocation used MANAGE_VEHICLES instead of MANAGE_TRIPS | Semantically incorrect; SUPERVISOR couldn't create/release allocations | 🟠 High | ✅ Fixed Phase 7 (RBAC-007) |
+| No user management API | `MANAGE_USERS` + `VIEW_USERS` permissions exist but no `/users/` endpoint | 🟡 Medium | 📋 Phase 10 backlog |
+| Subscription limits not enforced | `CompanySettings.max_vehicles`/`max_users` never checked during inserts | 🟡 Medium | 📋 Phase 10 backlog |
+
+---
+
+## Phase 10 — Planned Role Expansion
+
+New roles planned for Phase 10 — all implemented as new `UserRole` rows per company (no schema changes needed):
+
+| Role | Purpose | Base Permissions |
+|---|---|---|
+| `ACCOUNTS` | Invoice, billing, financial reports | Subset of MANAGER: VIEW_FINANCE, VIEW_REPORTS, VIEW_TRIPS |
+| `HR` | Driver onboarding, KYC, payroll | Subset of MANAGER: MANAGE_DRIVERS, VIEW_DRIVERS, VIEW_ATTENDANCE |
+| `MAINTENANCE_SUPERVISOR` | Maintenance management, vendor liaison | SUPERVISOR + MANAGE_MAINTENANCE, VIEW_MAINTENANCE |
+| `FUEL_MANAGER` | Fuel entries, fuel analytics | SUPERVISOR + MANAGE_FUEL, VIEW_FUEL |
+| `FLEET_MANAGER` | Vehicle master, maintenance, documents | MANAGER minus payroll/user permissions |
+
+**Implementation note:** New roles are added to `ROLE_PERMISSIONS` dict in `permissions.py`. The `tenant.user_roles` table stores a JSON `permissions` array per role per company — no schema changes required.
 
 ---
 

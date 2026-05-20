@@ -1,8 +1,8 @@
 # Known Issues — Tipper Management ERP
 
-**Version:** 7.0.0
+**Version:** 9.0.0
 **Last Updated:** 2026-05-19
-**Phase:** Full ERP Validation + Stabilization — Phase 7 Active
+**Phase:** Enterprise ERP Expansion — Phase 9 Active
 
 ---
 
@@ -452,9 +452,47 @@ Cross-origin requests are allowed from any domain. In production this means any 
 ### DASH-001 — Dashboard makes 21+ separate DB queries per request
 **Severity:** 🟡 Medium
 **File:** `backend/app/api/dashboard_api.py` — `get_dashboard_stats()`
-**Description:** The dashboard stats endpoint issues approximately 21 separate `filter_by_company()` + `.scalar()` queries for vehicle counts (5), driver counts (3), route count (1), attendance (1), trip lifecycle counts (5), financial sums (3), plus 3 analytics service calls. While each query is fast with indexes, this is architecturally wasteful and will show latency at scale.
-**Fix:** Consolidate vehicle/driver/trip counts into single GROUP BY queries. Dashboard response latency will improve significantly. Deferred to Phase 8 as non-blocking — system is functional.
-**Status:** 📋 Backlog — Phase 8
+**Description:** The dashboard stats endpoint issued approximately 21 separate `filter_by_company()` + `.scalar()` queries for vehicle counts (5), driver counts (3), route count (1), attendance (1), trip lifecycle counts (5), financial sums (3), plus 3 analytics service calls. While each query was fast with indexes, this was architecturally wasteful and would show latency at scale.
+**Fix:** Consolidated into 7 GROUP BY aggregation queries using SQLAlchemy `case()` + `func.sum()` for vehicle status, driver status, trip status counts, financials, Phase 5 KPIs (today/month), attendance today, and route count. Vehicle, driver, and trip status counts each use one query.
+**Status:** ✅ Fixed in Phase 9 (DASH-001)
+
+---
+
+## Phase 9 Issues Added
+
+### GAP-005 — Subscription limits not enforced
+**Severity:** 🟡 Medium
+**File:** `backend/app/api/company_api.py`, `backend/app/models/company.py` — `CompanySettings`
+**Description:** `CompanySettings` stores `max_users`, `max_vehicles`, and `subscription_tier` per company, but these limits are never checked during vehicle/driver/user creation. A BASIC tier company can add unlimited vehicles.
+**Fix:** Add limit enforcement in vehicle/driver create endpoints — query count before insert, raise 403/402 if exceeded.
+**Status:** 📋 Backlog — Phase 10
+
+---
+
+### GAP-006 — No user invitation or management API
+**Severity:** 🟡 Medium
+**File:** (missing) `backend/app/api/user_api.py`
+**Description:** `MANAGE_USERS` and `VIEW_USERS` permissions exist in the RBAC system, but there is no `/users/` API endpoint. Company admins cannot add employees, change roles, or reset passwords via the API.
+**Fix:** Build `user_api.py` with CRUD: invite user (create with role), list users, update role, deactivate user.
+**Status:** 📋 Backlog — Phase 10
+
+---
+
+### AUTH-004 — Hardcoded default admin password on company registration
+**Severity:** 🟠 High
+**File:** `backend/app/api/company_api.py` — `register_company()`
+**Description:** Every newly registered company gets an admin user with the hardcoded password `admin1234`. There is no forced password change on first login.
+**Fix:** Either require the registrant to provide an initial password, or force a password-change flow on first login.
+**Status:** 📋 Backlog — Phase 10 (AUTH-004)
+
+---
+
+### DOC-001 — Document file upload not yet supported (metadata-only)
+**Severity:** 🟢 Low
+**File:** `backend/app/api/document_api.py`, `backend/app/models/document.py`
+**Description:** The Document Management module stores metadata only. The `file_path` column exists as a VARCHAR placeholder for future S3/GCS integration. Actual file upload, storage, and retrieval are not implemented.
+**Fix:** Integrate with AWS S3 or Google Cloud Storage. Add file upload endpoint with pre-signed URL generation.
+**Status:** 📋 Backlog — Phase 11
 
 ---
 
@@ -497,4 +535,8 @@ Cross-origin requests are allowed from any domain. In production this means any 
 | TENANT-004 | company_api registration leaks raw Python exception to client | 🟠 High | ✅ Fixed in Phase 7 |
 | DEPLOY-001 | DEPLOYMENT_FLOW.md stale — showed old /docs healthcheck and blocking startup | 🟡 Medium | ✅ Fixed in Phase 7 |
 | DB-004 | company_id column missing on pre-existing tables — repair_existing_schema fails | 🔴 Critical | ✅ Fixed in Phase 7 (ALTER TABLE backfill before CREATE INDEX) |
-| DASH-001 | Dashboard makes 21+ separate DB queries per request | 🟡 Medium | 📋 Backlog — Phase 8 (consolidate with GROUP BY) |
+| DASH-001 | Dashboard makes 21+ separate DB queries per request | 🟡 Medium | ✅ Fixed in Phase 9 (7 GROUP BY aggregations) |
+| GAP-005 | Subscription limits not enforced (max_vehicles, max_users ignored) | 🟡 Medium | 📋 Backlog — Phase 10 |
+| GAP-006 | No user management API (MANAGE_USERS permission exists, no endpoint) | 🟡 Medium | 📋 Backlog — Phase 10 |
+| AUTH-004 | Default admin1234 password on registration — no forced change | 🟠 High | 📋 Backlog — Phase 10 |
+| DOC-001 | Document file upload not yet supported — metadata-only | 🟢 Low | 📋 Backlog — Phase 11 (S3/GCS) |
