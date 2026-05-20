@@ -80,7 +80,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.pageBg,
+      backgroundColor: AppColors.surface,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
