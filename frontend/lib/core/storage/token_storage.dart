@@ -1,9 +1,14 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
+ 
 /// Handles secure persistence of the JWT authentication token, role, and user info.
-/// Uses flutter_secure_storage (Keychain on iOS, Keystore on Android).
+/// Uses flutter_secure_storage (Keychain on iOS, Keystore on Android, localStorage on Web).
 class TokenStorage {
-  static const FlutterSecureStorage _storage = FlutterSecureStorage();
+  static const FlutterSecureStorage _storage = FlutterSecureStorage(
+    webOptions: WebOptions(
+      dbName: 'tipper_secure_storage',
+      publicKey: 'tipper_public_key',
+    ),
+  );
 
   static const String _tokenKey = 'tipper_auth_token';
   static const String _roleKey  = 'tipper_auth_role';   // Phase 3 addition
