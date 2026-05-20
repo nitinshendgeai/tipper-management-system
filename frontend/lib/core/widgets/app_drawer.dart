@@ -10,6 +10,9 @@ import '../../modules/route/screens/route_screen.dart';
 import '../../modules/trip/screens/trip_screen.dart';
 import '../../modules/allocation/screens/allocation_screen.dart';
 import '../../modules/attendance/screens/attendance_screen.dart';
+import '../../modules/maintenance/screens/maintenance_screen.dart';
+import '../../modules/fuel/screens/fuel_screen.dart';
+import '../../modules/document/screens/document_screen.dart';
 
 // Phase 3: RBAC role constants matching backend Role.name values
 class _Role {
@@ -133,7 +136,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     ),
 
                   // MANAGER and above only
-                  if (_canViewMasterData) ...[
+                  if (_canViewMasterData) ...[\
                     const SizedBox(height: 8),
                     _SectionLabel('Master Data'),
                     _NavItem(
@@ -161,6 +164,35 @@ class _AppDrawerState extends State<AppDrawer> {
                       activeRoute: widget.activeRoute,
                       onTap: () => _navigateTo(
                         context, 'routes', const RouteScreen(),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _SectionLabel('Enterprise'),
+                    _NavItem(
+                      icon: Icons.build_circle_rounded,
+                      label: 'Maintenance',
+                      routeKey: 'maintenance',
+                      activeRoute: widget.activeRoute,
+                      onTap: () => _navigateTo(
+                        context, 'maintenance', const MaintenanceScreen(),
+                      ),
+                    ),
+                    _NavItem(
+                      icon: Icons.local_gas_station_rounded,
+                      label: 'Fuel',
+                      routeKey: 'fuel',
+                      activeRoute: widget.activeRoute,
+                      onTap: () => _navigateTo(
+                        context, 'fuel', const FuelScreen(),
+                      ),
+                    ),
+                    _NavItem(
+                      icon: Icons.folder_rounded,
+                      label: 'Documents',
+                      routeKey: 'documents',
+                      activeRoute: widget.activeRoute,
+                      onTap: () => _navigateTo(
+                        context, 'documents', const DocumentScreen(),
                       ),
                     ),
                   ],
