@@ -35,7 +35,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.pageBg,
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
         title: const Text('Maintenance'),
         backgroundColor: AppColors.primary,

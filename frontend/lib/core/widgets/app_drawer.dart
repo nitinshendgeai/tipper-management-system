@@ -137,7 +137,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     ),
 
                   // MANAGER and above only
-                  if (_canViewMasterData) ...[\
+                  if (_canViewMasterData) ...[
                     const SizedBox(height: 8),
                     _SectionLabel('Master Data'),
                     _NavItem(

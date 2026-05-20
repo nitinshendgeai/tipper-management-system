@@ -58,7 +58,7 @@ class _DocumentScreenState extends State<DocumentScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.pageBg,
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
         title: const Text('Documents'),
         backgroundColor: AppColors.primary,

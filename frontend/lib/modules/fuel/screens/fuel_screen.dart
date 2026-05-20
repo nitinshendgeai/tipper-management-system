@@ -25,7 +25,7 @@ class _FuelScreenState extends State<FuelScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.pageBg,
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
         title: const Text('Fuel Management'),
         backgroundColor: AppColors.primary,
