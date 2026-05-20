@@ -13,6 +13,7 @@ import '../../modules/attendance/screens/attendance_screen.dart';
 import '../../modules/maintenance/screens/maintenance_screen.dart';
 import '../../modules/fuel/screens/fuel_screen.dart';
 import '../../modules/document/screens/document_screen.dart';
+import '../../modules/user/screens/user_screen.dart';
 
 // Phase 3: RBAC role constants matching backend Role.name values
 class _Role {
@@ -193,6 +194,15 @@ class _AppDrawerState extends State<AppDrawer> {
                       activeRoute: widget.activeRoute,
                       onTap: () => _navigateTo(
                         context, 'documents', const DocumentScreen(),
+                      ),
+                    ),
+                    _NavItem(
+                      icon: Icons.manage_accounts_rounded,
+                      label: 'Users',
+                      routeKey: 'users',
+                      activeRoute: widget.activeRoute,
+                      onTap: () => _navigateTo(
+                        context, 'users', const UserScreen(),
                       ),
                     ),
                   ],
