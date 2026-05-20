@@ -116,6 +116,38 @@ def repair_existing_schema(engine: Engine) -> None:
             END IF;
         END $$;
         """,
+
+        # ── Phase 9: Enterprise module table columns (idempotent backfills) ──
+        # maintenance_logs — company_id + vehicle_id if table pre-existed
+        "ALTER TABLE IF EXISTS operations.maintenance_logs ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES tenant.companies(id) ON DELETE CASCADE",
+        "ALTER TABLE IF EXISTS operations.maintenance_logs ADD COLUMN IF NOT EXISTS vehicle_id INTEGER REFERENCES master.vehicles(id) ON DELETE CASCADE",
+
+        # fuel_entries — company_id + vehicle_id if table pre-existed
+        "ALTER TABLE IF EXISTS operations.fuel_entries ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES tenant.companies(id) ON DELETE CASCADE",
+        "ALTER TABLE IF EXISTS operations.fuel_entries ADD COLUMN IF NOT EXISTS vehicle_id INTEGER REFERENCES master.vehicles(id) ON DELETE CASCADE",
+
+        # documents — company_id if table pre-existed
+        "ALTER TABLE IF EXISTS operations.documents ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES tenant.companies(id) ON DELETE CASCADE",
+
+        # ── Phase 9: Performance indexes for new enterprise tables ────────────
+        # maintenance_logs
+        "CREATE INDEX IF NOT EXISTS idx_maintenance_company_id ON operations.maintenance_logs (company_id)",
+        "CREATE INDEX IF NOT EXISTS idx_maintenance_vehicle_id ON operations.maintenance_logs (vehicle_id)",
+        "CREATE INDEX IF NOT EXISTS idx_maintenance_company_status ON operations.maintenance_logs (company_id, status)",
+        "CREATE INDEX IF NOT EXISTS idx_maintenance_company_type ON operations.maintenance_logs (company_id, maintenance_type)",
+
+        # fuel_entries
+        "CREATE INDEX IF NOT EXISTS idx_fuel_company_id ON operations.fuel_entries (company_id)",
+        "CREATE INDEX IF NOT EXISTS idx_fuel_vehicle_id ON operations.fuel_entries (vehicle_id)",
+        "CREATE INDEX IF NOT EXISTS idx_fuel_company_vehicle ON operations.fuel_entries (company_id, vehicle_id)",
+        "CREATE INDEX IF NOT EXISTS idx_fuel_fuel_date ON operations.fuel_entries (fuel_date)",
+
+        # documents
+        "CREATE INDEX IF NOT EXISTS idx_documents_company_id ON operations.documents (company_id)",
+        "CREATE INDEX IF NOT EXISTS idx_documents_expiry_date ON operations.documents (expiry_date)",
+        "CREATE INDEX IF NOT EXISTS idx_documents_company_category ON operations.documents (company_id, category)",
+        "CREATE INDEX IF NOT EXISTS idx_documents_vehicle_id ON operations.documents (vehicle_id)",
+        "CREATE INDEX IF NOT EXISTS idx_documents_driver_id ON operations.documents (driver_id)",
     ]
 
     with engine.begin() as connection:

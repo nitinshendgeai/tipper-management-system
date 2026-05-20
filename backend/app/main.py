@@ -29,6 +29,12 @@ from app.api.dashboard_api import router as dashboard_router
 from app.api.attendance_api import router as attendance_router
 from app.api.analytics_api import router as analytics_router
 
+# Phase 9: Enterprise modules
+from app.api.maintenance_api import router as maintenance_router
+from app.api.fuel_api import router as fuel_router
+from app.api.document_api import router as document_router
+from app.api.reports_api import router as reports_router
+
 from app.models.company import Company, CompanySettings, UserRole
 from app.models.user import User
 from app.models.role import Role
@@ -42,6 +48,11 @@ from app.models.trip_expense import TripExpense
 
 from app.models.assignment import DriverVehicleAssignment
 from app.models.attendance import DriverAttendance
+
+# Phase 9: Enterprise model imports (ensures create_all picks up new tables)
+from app.models.maintenance import VehicleMaintenance
+from app.models.fuel import FuelEntry
+from app.models.document import DocumentRecord
 
 
 # ─── Logging configuration ────────────────────────────────────────────────────
@@ -161,8 +172,8 @@ def _run_background_init() -> None:
 
 app = FastAPI(
     title="Tipper ERP API",
-    description="Intelligent Operational Fleet ERP — FastAPI backend",
-    version="2.0.0",
+    description="Enterprise-grade Multi-Tenant Transport ERP — FastAPI backend",
+    version="9.0.0",
 )
 
 app.add_middleware(
@@ -247,3 +258,9 @@ app.include_router(trip_expense_router,      prefix="/trips",            tags=["
 app.include_router(attendance_router,        prefix="/attendance",       tags=["Driver Attendance"])
 app.include_router(dashboard_router,         prefix="/dashboard",        tags=["Dashboard Analytics"])
 app.include_router(analytics_router,         prefix="/analytics",        tags=["Analytics & Intelligence"])
+
+# Phase 9: Enterprise modules
+app.include_router(maintenance_router,       prefix="/maintenance",      tags=["Maintenance Management"])
+app.include_router(fuel_router,              prefix="/fuel",             tags=["Fuel Management"])
+app.include_router(document_router,          prefix="/documents",        tags=["Document Management"])
+app.include_router(reports_router,           prefix="/reports",          tags=["Reports & Export"])
