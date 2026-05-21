@@ -109,22 +109,37 @@ def get_current_tenant_user(
 
 def require_permission(permission):
     """
-    Dependency factory — returns a FastAPI dependency that checks whether
-    the authenticated user's role includes the given Permission.
-
-    Usage:
-        @router.get("/vehicles")
-        def list_vehicles(user=Depends(require_permission(Permission.VIEW_VEHICLES))):
-            ...
+    Dependency factory — checks whether the authenticated user's role
+    includes the given Permission. Reads role directly from JWT.
     """
     from app.core.permissions import check_permission
+    from app.core.tenant import extract_tenant_from_token
 
     async def _check(
-        user: User = Depends(get_current_tenant_user),
+        credentials: HTTPAuthorizationCredentials = Depends(security),
+        db: Session = Depends(get_db),
     ) -> User:
         from app.core.tenant import TenantContext
 
-        role_name = TenantContext.get_role_name()
+        token = credentials.credentials
+        company_id, email, role_name = extract_tenant_from_token(token)
+
+        TenantContext.set_company_id(company_id)
+        TenantContext.set_role_name(role_name)
+
+        user = db.query(User).filter(
+            User.email == email,
+            User.company_id == company_id,
+        ).first()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found for this company",
+            )
+
+        TenantContext.set_user_id(user.id)
+
         if not check_permission(role_name, permission):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
