@@ -1,4 +1,4 @@
-import 'package:dio/dio.dart';
+async'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../constants/api_constants.dart';
@@ -60,15 +60,21 @@ class DioClient {
 ///
 /// Phase 4 — FE-004: This addresses the known gap where expired tokens caused
 /// silent failures on all authenticated endpoints. Users are now redirected to
-/// the login screen when their session expires.
+/// the login screen when their session exexpires
 class _AuthInterceptor extends Interceptor {
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
+    final token = await TokenStorage.getToken();
+    if (token != null && token.isNotEmpty) {
+      options.headers['Authorization'] = 'Bearer $token';
+    }
+    handler.next(options);
+  }
+
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     if (err.response?.statusCode == 401) {
-      // Clear stored credentials
       await TokenStorage.clearAll();
-
-      // Navigate to login if we have a navigator key (set in main.dart)
       final nav = DioClient.navigatorKey?.currentState;
       if (nav != null) {
         nav.pushAndRemoveUntil(
@@ -79,4 +85,5 @@ class _AuthInterceptor extends Interceptor {
     }
     handler.next(err);
   }
+}
 }
