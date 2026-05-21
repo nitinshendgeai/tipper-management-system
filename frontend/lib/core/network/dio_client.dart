@@ -63,12 +63,19 @@ class DioClient {
 /// the login screen when their session expires.
 class _AuthInterceptor extends Interceptor {
   @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
+    // Automatically inject Bearer token on every request
+    final token = await TokenStorage.getToken();
+    if (token != null && token.isNotEmpty) {
+      options.headers['Authorization'] = 'Bearer $token';
+    }
+    handler.next(options);
+  }
+
+  @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     if (err.response?.statusCode == 401) {
-      // Clear stored credentials
       await TokenStorage.clearAll();
-
-      // Navigate to login if we have a navigator key (set in main.dart)
       final nav = DioClient.navigatorKey?.currentState;
       if (nav != null) {
         nav.pushAndRemoveUntil(
