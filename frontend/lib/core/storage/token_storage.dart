@@ -3,9 +3,6 @@ import 'dart:html' as html show window;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// Handles secure persistence of the JWT token, role, and user info.
-/// Web: uses browser localStorage directly (dart:html).
-/// Native: uses flutter_secure_storage.
 class TokenStorage {
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
@@ -35,6 +32,35 @@ class TokenStorage {
     if (kIsWeb) {
       html.window.localStorage.remove(key);
     } else {
+      await _secureStorage.delete(key: key);
+    }
+  }
+
+  static Future<void> saveToken(String token) => _write(_tokenKey, token);
+  static Future<String?> getToken() => _read(_tokenKey);
+  static Future<bool> hasToken() async {
+    final t = await _read(_tokenKey);
+    return t != null && t.isNotEmpty;
+  }
+  static Future<void> clearToken() => _delete(_tokenKey);
+
+  static Future<void> saveRole(String role) => _write(_roleKey, role);
+  static Future<String?> getRole() => _read(_roleKey);
+  static Future<void> clearRole() => _delete(_roleKey);
+
+  static Future<void> saveName(String name) => _write(_nameKey, name);
+  static Future<String?> getName() => _read(_nameKey);
+
+  static Future<void> saveEmail(String email) => _write(_emailKey, email);
+  static Future<String?> getEmail() => _read(_emailKey);
+
+  static Future<void> clearAll() async {
+    await _delete(_tokenKey);
+    await _delete(_roleKey);
+    await _delete(_nameKey);
+    await _delete(_emailKey);
+  }
+}    } else {
       await _secureStorage.delete(key: key);
     }
   }
